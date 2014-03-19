@@ -37,7 +37,7 @@
 #' @param scaled a logical indicating if \code{Xr} (and \code{X2} if specified) must be scaled. If \code{X2} is specified the data is scaled on the basis of \eqn{Xr \cup Xu}.
 #' @param tol tolerance limit for convergence of the algorithm in the nipals algorithm (default is 1e-06). In the case of PLS this applies only to Yr with more than two variables.
 #' @param max.iter maximum number of iterations (default is 1000). In the case of \code{method = "pls"} this applies only to \code{Yr} matrices with more than one variable.
-#' @param cores number of cores used when \code{method} in \code{pcSelection} is \code{"opc"} (which can be computationally intensive) (default = 1)
+#' @param cores number of cores used when \code{method} in \code{pcSelection} is \code{"opc"} (which can be computationally intensive) (default = 1). Dee details.
 #' @param ... additional arguments to be passed to \code{pcProjection} or \code{plsProjection}.
 #' @param object  object of class "orthoProjection" (as returned by \code{orthoProjection}, \code{pcProjection} or \code{plsProjection}).
 #' @param newdata an optional data frame or matrix in which to look for variables with which to predict. If omitted, the scores are used. It must contain the same number of columns, to be used in the same order.
@@ -54,6 +54,7 @@
 #' At each iteration, the function computes a dissimilarity matrix retaining \eqn{p_i} components. The values of the side information of the samples are compared against the side information values of their most spectrally similar samples. 
 #' The optimal number of components retrieved by the function is the one that minimizes the root mean squared differences (RMSD) in the case of continuous variables, or maximizes the kappa index in the case of categorical variables. In this process the \code{\link{simEval}} function is used. 
 #' Note that for the \code{"opc"} method is necessary to specify \code{Yr} (the side information of the samples).
+#' Multi-threading for the computation of dissimilarities (see \code{cores} parameter) is based on OpenMP and hence works only on windows and linux. 
 #' @return \code{orthoProjection}, \code{pcProjection}, \code{plsProjectiona}, return a \code{list} of class \code{orthoProjection} with the following components:
 #' \itemize{
 #'  \item{\code{scores}}{ a \code{matrix} of scores corresponding to the samples in \code{Xr} and \code{X2} (if it applies). The number of components that the scores represent is given by the number of components chosen in the function.}
@@ -99,21 +100,24 @@
 #' # A partial least squares projection using the "opc" method
 #' # for the selection of the optimal number of components
 #' plsProj <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu, 
-#'                            method = "pls", pcSelection = list("opc", 40))
+#'                            method = "pls", 
+#'                            pcSelection = list("opc", 40))
 #'                            
 #' # A principal components projection using the "opc" method
 #' # for the selection of the optimal number of components
 #' pcProj <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu, 
-#'                           method = "pca", pcSelection = list("opc", 40))
+#'                           method = "pca", 
+#'                           pcSelection = list("opc", 40))
 #'                            
 #' # A partial least squares projection using the "cumvar" method
 #' # for the selection of the optimal number of components
 #' plsProj2 <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu, 
-#'                             method = "pls", pcSelection = list("cumvar", 0.99))
+#'                             method = "pls", 
+#'                             pcSelection = list("cumvar", 0.99))
 #' }                            
 #' @export
 
-#######################################################################
+######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
@@ -126,7 +130,14 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#######################################################################
+######################################################################
+
+## History:
+## 09.03.2014 Leo     In the doc was specified that multi-threading is 
+##                    not working for mac
+## 10.03.2014 Leo     Sanity check for the number of cases in Yr and Xr
+## 13.03.2014 Antoine The explanation of the cores argument was modified
+
 
 orthoProjection <- function(Xr, X2 = NULL, 
                             Yr = NULL, 
@@ -186,6 +197,8 @@ pcProjection <- function(Xr, X2 = NULL, Yr = NULL,
   if(is.factor(Yr))
     if(length(Yr) != nrow(Xr))
       stop("The number of obsevations in 'Yr' does not match with the number of observations in 'Xr'. In addition, when 'Yr' is a factor, only one variable is accepted", call. = call.)
+  
+  nxr <- nrow(Xr)
   
   if(!is.null(X2))
   {
@@ -327,10 +340,11 @@ pcProjection <- function(Xr, X2 = NULL, Yr = NULL,
       iter <- keepg <- T
       while(keepg){
         pp <- (t(xx) %*% tt)/(t(tt) %*% tt)[[1]]
-        pp <- pp / sqrt(t(pp)%*%pp)[[1]]
+        pp <- pp / ((t(pp)%*%pp)^0.5)[[1]]
         #tt.i <- (t(pp)%*%t(xx) / (t(pp)%*%pp)[[1]]) # ths can be removed (t(pp)%*%pp)[[1]]
         tt.i <- t(pp)%*%t(xx)
-        keepg <- !sqrt(((tt-tt.i)%*%t(tt-tt.i))) <= tol
+        val.n <- (((tt-tt.i)%*%t(tt-tt.i)))^0.5
+        keepg <- !(val.n <= tol)
         if(max.iter <= iter)
           keepg <- FALSE
         iter <- 1 + iter
@@ -374,6 +388,8 @@ pcProjection <- function(Xr, X2 = NULL, Yr = NULL,
     {
       Yr <- as.matrix(Yr)
       ny <- ncol(Yr)
+      if(nrow(Yr) != nxr)
+        stop("The number of rows in Xr does not match the number of cases in Yr")
     }else{ 
       ny <- 1
     }
@@ -549,6 +565,8 @@ plsProjection <- function(Xr, X2 = NULL, Yr,
   
   psel <- pcSelection
   Yr <- as.matrix(Yr)
+  if(nrow(Yr) != nrow(Xr))
+    stop("The number of rows in Xr does not match the number of cases in Yr")
   nas <- rowSums(is.na(Yr)) > 0
   
   ny <- ncol(Yr)

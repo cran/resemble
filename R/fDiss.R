@@ -24,6 +24,7 @@
 #' S(x_i, x_j) = cos^{-1}{\frac{\sum_{k=1}^{p}x_{i,k} x_{j,k}}{\sqrt{\sum_{k=1}^{p} x_{i,k}^{2}} \sqrt{\sum_{k=1}^{p} x_{j,k}^{2}}}}
 #'      }
 #' where \eqn{p} is the number of variables of the observations.
+#' The function does not accept input data containing missing values.
 #' @return 
 #' a \code{matrix} of the computed dissimilarities. 
 #' @author Leonardo Ramirez-Lopez and Antoine Stevens
@@ -36,10 +37,12 @@
 #' Xr <- NIRsoil$spc[as.logical(NIRsoil$train),]
 #' 
 #' # Euclidean distances between all the samples in Xr
-#' ed <- fDiss(Xr = Xr, method = "euclid", center = TRUE, scaled = TRUE)
+#' ed <- fDiss(Xr = Xr, method = "euclid", 
+#'             center = TRUE, scaled = TRUE)
 #' 
 #' # Euclidean distances between samples in Xr and samples in Xu
-#' ed.xr.xu <- fDiss(Xr = Xr, X2 = Xu, method = "euclid", center = TRUE, scaled = TRUE)
+#' ed.xr.xu <- fDiss(Xr = Xr, X2 = Xu, method = "euclid", 
+#'                   center = TRUE, scaled = TRUE)
 #' 
 #' # Mahalanobis distance computed on the first 20 spectral variables
 #' md.xr.xu <- fDiss(Xr = Xr[,1:20], X2 = Xu[,1:20], 
@@ -47,10 +50,11 @@
 #'                  center = TRUE, scaled = TRUE)
 #' 
 #' # Cosine dissimilarity matrix
-#' cdiss.xr.xu <- fDiss(Xr = Xr, X2 = Xu, method = "cosine", center = TRUE, scaled = TRUE)
+#' cdiss.xr.xu <- fDiss(Xr = Xr, X2 = Xu, method = "cosine", 
+#'                      center = TRUE, scaled = TRUE)
 #' @export
 
-#######################################################################
+######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
@@ -63,13 +67,22 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#######################################################################
+######################################################################
+
+## History:
+## 09.03.2014 Leo     The line rslt[is.na(rslt)] <- 0 was added in order 
+##                    to deal with NaNs produced by the C++ code    
 
 fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE)
 {
-  if(!is.null(X2))
+  if(!is.null(X2)){
     if(ncol(X2) != ncol(Xr))
-      stop("The number of columns (variables) in Xr must be equal to the number of columns (variables) in X2")
+      stop("The number of columns (variables) in Xr must be equal to \n the number of columns (variables) in X2")
+  if(sum(is.na(X2)) > 0)
+    stop("Input data contains missing values")
+  }
+  if(sum(is.na(Xr)) > 0)
+    stop("Matrices with missing values are not accepted")
   
   mtd <- match.arg(method, c("euclid", "mahalanobis","cosine"))
   if(length(mtd) > 1)
@@ -96,10 +109,10 @@ fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE
     if(method == "mahalanobis")
     {
       if(nrow(X) < ncol(X))
-        stop("For computing the Mahalanobis distance, the total number of samples (rows) must be larger than the number of variables (columns).")
+        stop("For computing the Mahalanobis distance, the total number of samples (rows) \n must be larger than the number of variables (columns).")
       X <- try(e2m(X, sm.method = "svd"), TRUE)
       if(!is.matrix(X))
-        stop("The covariance matrix (for the computation of the Mahalanobis distance) is exactly singular. Try another metod.")
+        stop("The covariance matrix (for the computation of the Mahalanobis distance) is exactly singular. \n Try another method.")
       method <- "euclid"
     }
     
@@ -127,6 +140,7 @@ fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE
     rownames(rslt) <- paste("Xr", 1:nrow(Xr), sep = ".")
     colnames(rslt) <- rownames(rslt)
   }
+  rslt[is.na(rslt)] <- 0
   return(rslt)
 }
 
@@ -171,7 +185,7 @@ sqrtSm <- function(X, method = c("svd", "eigen")){
     out <- svd(X)
     D <- diag(out$d)
     U <- out$v
-    return(U %*% sqrt(D) %*% t(U))
+    return(U %*% (D^0.5) %*% t(U))
   }
   
   if(method == "eigen")
@@ -179,6 +193,6 @@ sqrtSm <- function(X, method = c("svd", "eigen")){
     out <- eigen(X)
     D <- diag(out$values)
     U <- out$vectors
-    return(U %*% sqrt(D) %*% t(U))
+    return(U %*% (D^0.5) %*% t(U))
   }
 }

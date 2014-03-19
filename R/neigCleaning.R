@@ -50,7 +50,7 @@
 #'        on the corresponding similarity/dissimilarity metric specified in \code{sm}. Either \code{k.thr} or \code{k.dist.thr} must be specified.
 #' @param k.range a vector of length 2 which specifies the minimum (first value) and the maximum (second value) number of neighbours allowed when the \code{k.dist.thr} argument is used. 
 #' @param returnDiss a logical indicating if the similarity/dissimilarity matrix must be returned. Default is \code{FALSE}.
-#' @param cores number of cores used when \code{method} in \code{pcSelection} is \code{"opc"} (which can be computationally intensive) (default = 1)
+#' @param cores number of cores used when \code{method} in \code{pcSelection} is \code{"opc"} (which can be computationally intensive) (default = 1).
 #' @details
 #' This function may be specially useful when the reference set (\code{Xr}) is very large. In some cases the number of observations in the reference set can be reduced by removing irrelevant samples (i.e. samples that are not neighbours of a particular target set). If \code{Xr} is very large, it is recommended to consider the use this function prior using the \code{mbl} function.
 #' @return \code{neigCleaning} returns a \code{list} containing the following objects:
@@ -84,14 +84,14 @@
 #' Yr <- Yr[!is.na(Yr)] 
 #' 
 #' # Identify the non-neighbour samples using the default parameters
-#' # (In this example all the samples in Xr belong at least to the first 100 neighbours of 
-#' # one sample in Xu)
+#' # (In this example all the samples in Xr belong at least to the 
+#' # first 100 neighbours of one sample in Xu)
 #' ex1 <- neigCleaning(Xr = Xr, Xu = Xu, 
 #'                             k.thr = 100)
 #' 
-#' # Identify the non-neighbour samples using principal component(PC) and 
-#' # partial least squares (PLS) distances, and using the "opc" approach 
-#' # for selecting the number of components
+#' # Identify the non-neighbour samples using principal component(PC) 
+#' # and partial least squares (PLS) distances, and using the "opc" 
+#' # approach for selecting the number of components
 #' ex2 <- neigCleaning(Xr = Xr, Xu = Xu, 
 #'                             Yr = Yr,
 #'                             sm = "pc",
@@ -104,8 +104,9 @@
 #'                             pcSelection = list("opc", 40),
 #'                             k.thr = 150)
 #' 
-#' # Identify the non-neighbour samples using distances computed based on local PC analysis 
-#' # and using the "cumvar" and "var" approaches for selecting the number of PCs
+#' # Identify the non-neighbour samples using distances computed 
+#' # based on local PC analysis and using the "cumvar" and "var" 
+#' # approaches for selecting the number of PCs
 #' ex4 <- neigCleaning(Xr = Xr, Xu = Xu, 
 #'                             sm = "loc.pc",
 #'                             pcSelection = list("cumvar", 0.999),
@@ -120,7 +121,7 @@
 #' }                          
 #' @export
 
-#######################################################################
+######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
@@ -133,7 +134,12 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#######################################################################
+######################################################################
+
+## History:
+## 09.03.2014 Leo     In the doc was specified that multi-threading is 
+##                    not working for mac
+
 neigCleaning <- function(Xr, Xu, 
                          sm = "pc",
                          pcSelection = list("cumvar", 0.99),

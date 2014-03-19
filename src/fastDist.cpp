@@ -1,11 +1,14 @@
 #include <RcppArmadillo.h>
-#include <omp.h>
+#ifdef _OPENMP
+#include <omp.h>    // OpenMP
+#endif
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::plugins(openmp)]]
 
 using namespace Rcpp;
 
 //' @title A fast distance algorithm for two matrices written in C++ 
+//' @description Computes distances between two data matrices using "euclid", "cor", "cosine" 
 //' @usage 
 //' fastDist(X,Y,method)
 //' @param X a \code{matrix}
@@ -79,7 +82,9 @@ NumericVector fastDistV(NumericMatrix X, NumericVector Y, String method){
 //' @useDynLib resemble
 // [[Rcpp::export]]   
 NumericVector fastDistVV(NumericVector X, int cores){  
+   #ifdef _OPENMP
    omp_set_num_threads(cores);
+   #endif
    int nX = X.size();
    int n = ((nX*nX)-nX)/2;
    NumericVector output(n);   

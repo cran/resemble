@@ -1,9 +1,9 @@
 #' @title A function for memory-based learning (mbl)
 #' @description
-#' This function is implemented for memory-based learning (a.k.a. instance-based learning or local regression) which is a non-linear approach 
-#' for predicting attributes of a set of samples based on the spectral information. For each sample in an prediction set  a specific local 
-#' regression is carried out based on a subset of similar samples (or nearest neighbours) selected from a reference set. The local model is 
-#' then used to predict a given attribute of the target prediction sample. Therefore this function does not yield a global model. 
+#' This function is implemented for memory-based learning (a.k.a. instance-based learning or local regression) which is a non-linear lazy learning approach 
+#' for predicting a given response variable from a set of (spectral) predictor variables. For each sample in an prediction set  a specific local 
+#' regression is carried out based on a subset of similar samples (nearest neighbours) selected from a reference set. The local model is 
+#' then used to predict the response value of the target (prediction) sample. Therefore this function does not yield a global regression model. 
 #' @usage
 #' mbl(Yr, Xr, Yu = NULL, Xu,
 #'     mblCtrl = mblControl(), 
@@ -69,6 +69,7 @@
 #'     }
 #'     }
 #'  }
+#' The loop used to iterate over the \code{Xu} samples in \code{mbl} uses the \code{\%dopar\%} operator of the \code{\link{foreach}} package, which can be used to parallelize this internal loop. The last example given in the \code{\link{mbl}} function ilustrates how to parallelize the \code{\link{mbl}} function.
 #' @return a \code{list} of class \code{mbl} with the following components (sorted by either \code{k} or \code{k.diss} according to the case):
 #' \itemize{
 #'  \item{\code{call}}{ the call used.}
@@ -108,8 +109,9 @@
 #' 
 #' data(NIRsoil)
 #' 
-#' # Filter the data using the Savitzky and Golay smoothing filter with a window size of 
-#' # 11 spectral variables and a polynomial order of 3 (no differentiation).
+#' # Filter the data using the Savitzky and Golay smoothing filter with 
+#' # a window size of 11 spectral variables and a polynomial order of 3 
+#' # (no differentiation).
 #' sg <- savitzkyGolay(NIRsoil$spc, p = 3, w = 11, m = 0) 
 #'
 #' # Replace the original spectra with the filtered ones
@@ -126,11 +128,13 @@
 #' 
 #' Yu <- Yu[!is.na(Yu)]
 #' Yr <- Yr[!is.na(Yr)]
-#'
+#' 
 #' # Example 1
-#' # A mbl approach (the spectrum-based learner) as implemented in Ramirez-Lopez et al. (2013)
+#' # A mbl approach (the spectrum-based learner) as implemented 
+#' # in Ramirez-Lopez et al. (2013)
 #' # Example 1.1
-#' # An exmaple where Yu is supposed to be unknown, but the Xu (spectral variables) are known 
+#' # An exmaple where Yu is supposed to be unknown, but the Xu 
+#' # (spectral variables) are known 
 #' ctrl1 <- mblControl(sm = "pc", pcSelection = list("opc", 40), 
 #'                     valMethod = "NNv", 
 #'                     scaled = TRUE, center = TRUE)
@@ -153,8 +157,9 @@
 #' sbl.u2
 #'
 #' # Example 1.3
-#' # A variation of the spectrum-based learner implemented in Ramirez-Lopez et al. (2013)
-#' # where the dissimilarity matrices are recomputed based on partial least squares scores
+#' # A variation of the spectrum-based learner implemented in 
+#' # Ramirez-Lopez et al. (2013)where the dissimilarity matrices are 
+#' # recomputed based on partial least squares scores
 #' ctrl_1.3 <- mblControl(sm = "pls", pcSelection = list("opc", 40), 
 #'                        valMethod = "NNv", 
 #'                        scaled = TRUE, center = TRUE)
@@ -168,9 +173,11 @@
 #' sbl_1.3
 #' 
 #' # Example 2
-#' # A mbl approach similar to the ones implemented in Ramirez-Lopez et al. (2013) 
+#' # A mbl approach similar to the ones implemented in 
+#' # Ramirez-Lopez et al. (2013) 
 #' # and Fernandez Pierna and Dardenne (2008)
-#' ctrl.mbl <- mblControl(sm = "cor", pcSelection = list("cumvar", 0.999), 
+#' ctrl.mbl <- mblControl(sm = "cor", 
+#'                        pcSelection = list("cumvar", 0.999), 
 #'                        valMethod = "NNv", 
 #'                        scaled = TRUE, center = TRUE)
 #'                           
@@ -185,8 +192,10 @@
 #'
 #' # Example 3
 #' # A WA-LOCAL approach as implemented in Zhang et al. (2004)
-#' ctrl.wa <- mblControl(sm = "cor", pcSelection = list("cumvar", 0.999), 
-#'                       valMethod = c("NNv", "loc_crossval"), resampling = 10, p = 0.75,
+#' ctrl.wa <- mblControl(sm = "cor", 
+#'                       pcSelection = list("cumvar", 0.999), 
+#'                       valMethod = c("NNv", "loc_crossval"), 
+#'                       resampling = 10, p = 0.75,
 #'                       scaled = TRUE, center = TRUE)
 #'                          
 #' wa.local <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
@@ -199,19 +208,23 @@
 #' 
 #' # Example 4
 #' # Using the function with user-defined dissimilarities
-#' # Examples 4.1 - 4.2: Compute a square symetric matrix of dissimilarities between 
+#' # Examples 4.1 - 4.2: Compute a square symetric matrix of 
+#' # dissimilarities between 
 #' # all the elements in Xr and Xu (dissimilarities will be used as 
 #' # additional predictor variables later in the mbl function)
-#' # Examples 4.3 - 4.4: Derive a dissimilarity value of each element in Xu to each element in Xr
-#' # (in this case dissimilarities will not be used as additional predictor 
-#' # variables later in the mbl function)
-#' 
+#' # Examples 4.3 - 4.4: Derive a dissimilarity value of each element 
+#' # in Xu to each element in Xr (in this case dissimilarities will 
+#' # not be used as additional predictor variables later in the 
+#' # mbl function)
 #' # Example 4.1
-#' manhattanD <- dist(rbind(Xr, Xu), method = "manhattan") # the manhattan distance 
+#' # the manhattan distance 
+#' manhattanD <- dist(rbind(Xr, Xu), method = "manhattan") 
 #' manhattanD <- as.matrix(manhattanD)
 #'
-#' ctrl.udd <- mblControl(sm = "none", pcSelection = list("cumvar", 0.999), 
-#'                        valMethod = c("NNv", "loc_crossval"), resampling = 10, p = 0.75,
+#' ctrl.udd <- mblControl(sm = "none", 
+#'                        pcSelection = list("cumvar", 0.999), 
+#'                        valMethod = c("NNv", "loc_crossval"), 
+#'                        resampling = 10, p = 0.75,
 #'                        scaled = TRUE, center = TRUE)
 #'
 #' mbl.udd1 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
@@ -223,10 +236,13 @@
 #' mbl.udd1
 #' 
 #' #Example 4.2
-#' der.sp <- t(diff(t(rbind(Xr, Xu)), lag = 1, differences = 1)) # first derivative spectra
+#' # first derivative spectra
+#' der.sp <- t(diff(t(rbind(Xr, Xu)), lag = 1, differences = 1)) 
 #' 
-#' # The euclidean dissimilarity on the derivative spectra (a.k.a spectral dissimilarity) 
-#' spc.dist <- fDiss(Xr = der.sp, method = "euclid", center = FALSE, scale = FALSE) 
+#' # The euclidean dissimilarity on the derivative spectra 
+#' # (a.k.a spectral dissimilarity) 
+#' spc.dist <- fDiss(Xr = der.sp, method = "euclid", 
+#'                   center = FALSE, scale = FALSE) 
 #' 
 #' mbl.udd2 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
 #'                 mblCtrl = ctrl.udd, 
@@ -234,12 +250,14 @@
 #'                 dissUsage = "predictors",
 #'                 k = seq(40, 150, by = 10), 
 #'                 method = "gpr")
-#'                  
+#'                                 
 #' #Example 4.3
-#' der.Xr <- t(diff(t(Xr), lag = 1, differences = 1)) # first derivative spectra
-#' der.Xu <- t(diff(t(Xu), lag = 1, differences = 1)) # first derivative spectra
+#' # first derivative spectra
+#' der.Xr <- t(diff(t(Xr), lag = 1, differences = 1)) 
+#' der.Xu <- t(diff(t(Xu), lag = 1, differences = 1))
 #' # the sid on the derivative spectra
-#' der.sid <- sid(Xr = der.Xr, X2 = der.Xu, mode = "density", center = TRUE, scaled = TRUE) 
+#' der.sid <- sid(Xr = der.Xr, X2 = der.Xu, mode = "density", 
+#'                center = TRUE, scaled = TRUE) 
 #' der.sid <- der.sid$sid
 #' 
 #' mbl.udd3 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
@@ -251,7 +269,7 @@
 #' mbl.udd3
 #' 
 #' # Example 5
-#' #For running the sbl function in parallel
+#' # For running the sbl function in parallel
 #' n.cores <- 2   # two cores
 #' 
 #' # Set the number of cores according to the OS
@@ -281,7 +299,7 @@
 #' }
 #' @export
 
-#######################################################################
+######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
@@ -294,7 +312,11 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#######################################################################
+######################################################################
+
+## History:
+## 09.03.2014 Leo     Doc examples  were formated with a max. line width
+## 13.03.2014 Antoine The explanation of the cores argument was modified                   
 
 mbl <- function(Yr, Xr, Yu = NULL, Xu, 
                 mblCtrl = mblControl(),
@@ -859,7 +881,7 @@ mbl <- function(Yr, Xr, Yu = NULL, Xu,
   if(mblCtrl$valMethod %in% c("NNv", "both"))
   {
     nn.stats <- function(x,...){
-      nn.rmse <- sqrt(mean((x$y.nearest - x$y.nearest.pred)^2))
+      nn.rmse <- (mean((x$y.nearest - x$y.nearest.pred)^2))^0.5
       nn.st.rmse <- nn.rmse / diff(range(x$y.nearest))  
       nn.rsq <- (cor(x$y.nearest, x$y.nearest.pred))^2
       return(c(nn.rmse = nn.rmse, nn.st.rmse = nn.st.rmse, nn.rsq = nn.rsq))
@@ -875,7 +897,7 @@ mbl <- function(Yr, Xr, Yu = NULL, Xu,
   if(!is.null(Yu))
   {
     yu.stats <- function(x,...){
-      yu.rmse <- sqrt(mean((x$yu.obs - x$pred)^2))
+      yu.rmse <- (mean((x$yu.obs - x$pred)^2))^0.5
       yu.st.rmse <- yu.rmse / diff(range(x$yu.obs)) 
       yu.rsq <- (cor(x$yu.obs, x$pred))^2
       return(c(yu.rmse = yu.rmse, yu.st.rmse = yu.st.rmse, yu.rsq = yu.rsq))
@@ -1194,7 +1216,7 @@ gprCv <- function(x, y, scaled, weights = NULL, p = 0.75, resampling = 10, noise
     rspi[,jj]<- strs
     fit.gp <-  gpr.dp(Xn = x[-rspi[,jj],], Yn = y[-rspi[,jj]], scaled = scaled, noise.v = noise.v)
     y.pred <-  pred.gpr.dp(fit.gp, x[rspi[,jj],])
-    rmse.seg[jj] <- sqrt(mean((y.pred - y[rspi[,jj]])^2))
+    rmse.seg[jj] <- (mean((y.pred - y[rspi[,jj]])^2))^0.5
     st.rmse.seg[jj] <- rmse.seg[jj] /diff(range(y[rspi[,jj]]))
     rsq.seg[jj] <- (cor(y.pred, y[rspi[,jj]]))^2
   }
@@ -1247,7 +1269,7 @@ plsCv <- function(x, y, ncomp, scaled, weights, p = 0.75, resampling = 10, retri
     rspi[,jj]<- strs
     fit <- plsr(y[-rspi[,jj]] ~ x[-rspi[,jj],], scale = scaled, ncomp = ncomp, method = "oscorespls")
     y.pred <- (predict(fit, x[rspi[,jj],]))[,,1:ncomp]
-    rmse.seg[,jj] <- sqrt(colMeans((y.pred - y[rspi[,jj]])^2))
+    rmse.seg[,jj] <- (colMeans((y.pred - y[rspi[,jj]])^2))^0.5
     st.rmse.seg[,jj] <- rmse.seg[,jj] /diff(range(y[rspi[,jj]]))
     rsq.seg[,jj] <- (cor(y.pred, y[rspi[,jj]]))^2
   }
@@ -1325,9 +1347,9 @@ wapls.weights <- function(plsO, orgX, type = c("w1", "w2"), newX = NULL, pls.c, 
     for(ii in minF:maxF)
     {
       xrec <- (sc[,1:ii]) %*% t(as.matrix(plsO$loadings[,1:ii]))
-      x.rms.res[ii] <- sqrt(mean((newX.tr - xrec)^2))
+      x.rms.res[ii] <- (mean((newX.tr - xrec)^2))^0.5
     }
-    rms.b <- sqrt(colMeans((coef(plsO, ncomp = 1:maxF)[,,1:maxF])^2))
+    rms.b <- (colMeans((coef(plsO, ncomp = 1:maxF)[,,1:maxF])^2))^0.5
     rms.b_x <- (rms.b * x.rms.res)[minF:maxF]
     whgt <- 1/(rms.b_x)
     whgt <- whgt/sum(whgt)

@@ -6,11 +6,11 @@
 #' the correlation coefficient are computed for continuous variables and for discrete variables the kappa index 
 #' is calculated. 
 #' @usage 
-#' simEval(d, sideInf, lower.tri = FALSE, cores, ...)
+#' simEval(d, sideInf, lower.tri = FALSE, cores = 1, ...)
 #' @param d a \code{vector} or a square symmetric \code{matrix} (or \code{data.frame}) of similarity/dissimilarity scores between samples of a given dataset (see \code{lower.tri}).
 #' @param sideInf a \code{vector} containing the side information corresponding to the samples in the dataset from which the similarity/dissimilarity matrix was computed. It can be either a numeric vector (continuous variable) or a factor (discrete variable). If it is a numeric \code{vector},  the root mean square of differences is used for assessing the similarity between the samples and their corresponding most similar samples in terms of the side information provided. If it is a factor, then the kappa index is used. See details.
 #' @param lower.tri a \code{logical} indicating whether the input similarities/dissimilarities are given as a \code{vector} of the lower triangle of the distance matrix (as returned e.g. by \code{base::dist}) or as a square symmetric \code{matrix} (or \code{data.frame}) (default = \code{FALSE})
-#' @param cores number of cores used to find the neareast neighbours of similarity/dissimilarity scores (default = 1)
+#' @param cores number of cores used to find the neareast neighbours of similarity/dissimilarity scores (default = 1). See details.
 #' @param ... additional parameters (for internal use only).
 #' @details
 #' For the evaluation of similarity/dissimilarity matrices this function uses side information (information about one variable which is available for a
@@ -26,7 +26,7 @@
 #' \deqn{\kappa = \frac{p_{o}-p_{e}}{1-p_{e}}}
 #' where both \eqn{p_o} and \eqn{p_e} are two different agreement indexes between the the side information of the samples and the side information of their corrresponding nearest samples (i.e. most similar samples). 
 #' While \eqn{p_o} is the relative agreement \eqn{p_e} is the the agreement expected by chance. 
-#' 
+#' Multi-threading for the computation of dissimilarities (see \code{cores} parameter) is based on OpenMP and hence works only on windows and linux. 
 #' @return \code{simEval} returns a \code{list} with the following components:
 #' \itemize{
 #'  \item{"\code{eval}}{either the RMSD (and the correlation coefficient) or the kappa index}
@@ -34,9 +34,9 @@
 #'  }
 #' @author Leonardo Ramirez-Lopez
 #' @references 
-#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematt?, J.A.M., Scholten, T. 2013a. The spectrum-based learner: A new local approach for modeling soil vis-NIR spectra of complex datasets. Geoderma 195-196, 268-279.
+#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematte, J.A.M., Scholten, T. 2013a. The spectrum-based learner: A new local approach for modeling soil vis-NIR spectra of complex datasets. Geoderma 195-196, 268-279.
 #' 
-#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Viscarra Rossel, R., Dematt?, J. A. M.,  Scholten, T. 2013b. Distance and similarity-search metrics for use with soil vis-NIR spectra. Geoderma 199, 43-53.
+#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Viscarra Rossel, R., Dematte, J. A. M.,  Scholten, T. 2013b. Distance and similarity-search metrics for use with soil vis-NIR spectra. Geoderma 199, 43-53.
 #' @examples
 #' \dontrun{
 #' require(prospectr)
@@ -68,12 +68,14 @@
 #' # The final evaluation results
 #' se$eval
 #' 
-#' # The final values of the side information (Yr) and the values of the side information
-#' # corresponding to the first nearest neighbours found by using the distance matrix
+#' # The final values of the side information (Yr) and the values of 
+#' # the side information corresponding to the first nearest neighbours 
+#' # found by using the distance matrix
 #' se$firstNN
 #' 
 #' # Example 1.2
-#' # Evaluate the distance matrix on the baisis of two side information (Yr and Yr2) 
+#' # Evaluate the distance matrix on the baisis of two side 
+#' # information (Yr and Yr2) 
 #' # variables associated with Xr
 #' Yr2 <- NIRsoil$CEC[as.logical(NIRsoil$train)]
 #' se2 <- simEval(d = ds, sideInf = cbind(Yr, Yr2))
@@ -81,28 +83,33 @@
 #' # The final evaluation results
 #' se2$eval
 #' 
-#' # The final values of the side information variables and the values of the side information
-#' # variables corresponding to the first nearest neighbours found by using the distance matrix
+#' # The final values of the side information variables and the values 
+#' # of the side information variables corresponding to the first 
+#' # nearest neighbours found by using the distance matrix
 #' se2$firstNN
 #' 
 #' ###
 #' # Example 2
-#' # Evaluate the distances produced by retaining different number of principal components
-#' # (this is the same principle used in the optimized principal components approach ('opc))
+#' # Evaluate the distances produced by retaining different number of 
+#' # principal components (this is the same principle used in the 
+#' # optimized principal components approach ("opc"))
 #' 
 #' # first project the data
-#' pca <- orthoProjection(Xr = Xr, method = "pca", pcSelection = list("manual", 30), 
+#' pca <- orthoProjection(Xr = Xr, method = "pca", 
+#'                        pcSelection = list("manual", 30), 
 #'                        center = TRUE, scaled = TRUE)
 #' 
 #' # standardize the scores
-#' scores.s <- sweep(pca$scores, MARGIN = 2, STATS = pca$sc.sdv, FUN = "/")
+#' scores.s <- sweep(pca$scores, MARGIN = 2, 
+#'                   STATS = pca$sc.sdv, FUN = "/")
 #' rslt <-  matrix(NA, ncol(scores.s), 3)
 #' colnames(rslt) <- c("pcs", "rmsd", "r")
 #' rslt[,1] <- 1:ncol(scores.s)
 #' for(i in 1:ncol(scores.s))
 #' {
 #'   sc.ipcs <- scores.s[ ,1:i, drop = FALSE]
-#'   di <- fDiss(Xr = sc.ipcs, method = "euclid", center = FALSE, scaled = FALSE)
+#'   di <- fDiss(Xr = sc.ipcs, method = "euclid", 
+#'               center = FALSE, scaled = FALSE)
 #'   se <- simEval(d = di, sideInf = Yr)
 #'   rslt[i,2:3] <- unlist(se$eval)
 #' }
@@ -111,20 +118,22 @@
 #' ###
 #' # Example 3
 #' # Example 3.1
-#' # Evaluate a dissimilarity matrix computed using a moving window correlation method
+#' # Evaluate a dissimilarity matrix computed using a moving window 
+#' # correlation method
 #' mwcd <- mcorDiss(Xr = Xr, ws = 35, center = FALSE, scaled = FALSE)
 #' se.mw <- simEval(d = mwcd, sideInf = Yr)
 #' se.mw$eval
 #' 
 #' # Example 3.2
-#' # Evaluate a dissimilarity matrix computed using the correlation method
+#' # Evaluate a dissimilarity matrix computed using the correlation 
+#' # method
 #' cd <- corDiss(Xr = Xr, center = FALSE, scaled = FALSE)
 #' se.nc <- simEval(d = cd, sideInf = Yr)
 #' se.nc$eval
 #' }
 #' @export
 
-#######################################################################
+######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
@@ -137,7 +146,15 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#######################################################################
+######################################################################
+
+## History:
+## 09.03.2014 Leo     In the doc was specified that multi-threading is 
+##                    not working for mac
+## 13.03.2014 Antoine The explanation of the cores argument was modified
+## 18.03.2014 Antoine Add error message when input dissimilarity matrix 
+##                    in simEval is not squared
+
 
 simEval <- function(d, sideInf, lower.tri = FALSE, cores = 1, ...){
  
@@ -155,8 +172,11 @@ simEval <- function(d, sideInf, lower.tri = FALSE, cores = 1, ...){
     sideInf <- as.matrix(sideInf)
     ny <- ncol(sideInf)
     if(!lower.tri){
-      if(!(is.data.frame(d)|is.matrix(d)))
+      if(!(is.data.frame(d) | is.matrix(d)))
         stop("'d' must be a matrix or a data.frame when lower.tri = FALSE", call. = call.)
+      dimd <- dim(d)
+      if(dimd[1] != dimd[2])
+        stop("'d' must be a square matrix when lower.tri = FALSE", call. = call.)
       if(nrow(d) != nrow(sideInf))
         stop("The number of rows of the 'd' matrix does not match the number of observations in 'sideInf'", call. = call.)
       most <- which_min(d,cores)  # find nearest neighbours

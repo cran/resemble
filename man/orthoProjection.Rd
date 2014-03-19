@@ -122,7 +122,7 @@ plsProjection(Xr, X2 = NULL, Yr,
 
   \item{cores}{number of cores used when \code{method} in
   \code{pcSelection} is \code{"opc"} (which can be
-  computationally intensive) (default = 1)}
+  computationally intensive) (default = 1). Dee details.}
 
   \item{...}{additional arguments to be passed to
   \code{pcProjection} or \code{plsProjection}.}
@@ -230,7 +230,10 @@ case of continuous variables, or maximizes the kappa index
 in the case of categorical variables. In this process the
 \code{\link{simEval}} function is used. Note that for the
 \code{"opc"} method is necessary to specify \code{Yr} (the
-side information of the samples).
+side information of the samples). Multi-threading for the
+computation of dissimilarities (see \code{cores} parameter)
+is based on OpenMP and hence works only on windows and
+linux.
 }
 \examples{
 \dontrun{
@@ -252,17 +255,20 @@ Yr <- Yr[!is.na(Yr)]
 # A partial least squares projection using the "opc" method
 # for the selection of the optimal number of components
 plsProj <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu,
-                           method = "pls", pcSelection = list("opc", 40))
+                           method = "pls",
+                           pcSelection = list("opc", 40))
 
 # A principal components projection using the "opc" method
 # for the selection of the optimal number of components
 pcProj <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu,
-                          method = "pca", pcSelection = list("opc", 40))
+                          method = "pca",
+                          pcSelection = list("opc", 40))
 
 # A partial least squares projection using the "cumvar" method
 # for the selection of the optimal number of components
 plsProj2 <- orthoProjection(Xr = Xr, Yr = Yr, X2 = Xu,
-                            method = "pls", pcSelection = list("cumvar", 0.99))
+                            method = "pls",
+                            pcSelection = list("cumvar", 0.99))
 }
 }
 \author{

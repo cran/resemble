@@ -9,7 +9,7 @@ orthoDiss(Xr, X2 = NULL,
           local = FALSE,
           k0,
           center = TRUE, scaled = TRUE,
-          return.all = FALSE, cores, ...)
+          return.all = FALSE, cores = 1, ...)
 }
 \arguments{
   \item{Xr}{a \code{matrix} (or \code{data.frame})
@@ -117,7 +117,7 @@ orthoDiss(Xr, X2 = NULL,
   \item{cores}{number of cores used when \code{method} in
   \code{pcSelection} is \code{"opc"} (which can be
   computationally intensive) and \code{local = FALSE}
-  (default = 1)}
+  (default = 1). Dee details.}
 
   \item{...}{additional arguments to be passed to the
   \code{\link{orthoProjection}} function.}
@@ -137,7 +137,9 @@ dissimilarity matrix. If \code{local = FALSE} a distance
 \code{matrix}. If \code{local = TRUE} a \code{matrix} of
 class \code{orthoDiss}. In this case each column represent
 the dissimilarity between a target sample and its
-neighbourhood.} }
+neighbourhood.} } Multi-threading for the computation of
+dissimilarities (see \code{cores} parameter) is based on
+OpenMP and hence works only on windows and linux.
 }
 \description{
 This function computes orthogonal dissimilarities between
@@ -185,26 +187,29 @@ Yu <- Yu[!is.na(Yu)]
 Xr <- Xr[!is.na(Yr),]
 Yr <- Yr[!is.na(Yr)]
 
-# Computation of the orthogonal dissimilarity matrix using the default parameters
+# Computation of the orthogonal dissimilarity matrix using the
+# default parameters
 ex1 <- orthoDiss(Xr = Xr, X2 = Xu)
 
-# Computation of a principal component dissimilarity matrix using the
-# "opc" method for the selection of the principal components
+# Computation of a principal component dissimilarity matrix using
+# the "opc" method for the selection of the principal components
 ex2 <- orthoDiss(Xr = Xr, X2 = Xu,
                  Yr = Yr,
                  pcSelection = list("opc", 40),
                  method = "pca",
                  return.all = TRUE)
 
-# Computation of a partial least squares (PLS) dissimilarity matrix using the
-# "opc" method for the selection of the PLS components
+# Computation of a partial least squares (PLS) dissimilarity
+# matrix using the "opc" method for the selection of the PLS
+# components
 ex3 <- orthoDiss(Xr = Xr, X2 = Xu,
                  Yr = Yr,
                  pcSelection = list("opc", 40),
                  method = "pls")
 
-# Computation of a partial least squares (PLS) local dissimilarity matrix using the
-# "opc" method for the selection of the PLS components
+# Computation of a partial least squares (PLS) local dissimilarity
+# matrix using the "opc" method for the selection of the PLS
+# components
 ex4 <- orthoDiss(Xr = Xr, X2 = Xu,
                  Yr = Yr,
                  pcSelection = list("opc", 40),

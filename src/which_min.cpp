@@ -1,5 +1,8 @@
 #include <RcppArmadillo.h>
-#include <omp.h>
+#ifdef _OPENMP
+#include <omp.h>    // OpenMP
+#endif
+
 using namespace Rcpp;
 // [[Rcpp::plugins(openmp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -16,7 +19,9 @@ using namespace Rcpp;
 //' @author Antoine Stevens 
 // [[Rcpp::export]]   
 NumericVector which_min(NumericMatrix X, int cores){  
+   #ifdef _OPENMP
    omp_set_num_threads(cores);
+   #endif
    int nX = X.nrow(), kX = X.ncol();
    arma::mat XX(X.begin(), nX, kX, false); 
    arma::uword  index;
@@ -27,6 +32,7 @@ NumericVector which_min(NumericMatrix X, int cores){
     x(i) = arma::datum::nan; // remove diag
     double z = x.min(index);
     vindex[i] = index;
+    z = z;
    }
    return wrap(vindex +1);   
 }
@@ -37,15 +43,23 @@ NumericVector which_min(NumericMatrix X, int cores){
 //' @param X a \code{vector} of distance (as computed in \code{resemble:::fastDistVV} or \code{base::dist})
 //' @param cores number of cores used to run the computation
 //' @return a \code{vector} of the indices of the nearest neighbours
-//' @details Used internally to find the nearest neighbours
+//' @details 
+//' Used internally to find the nearest neighbours. 
+//' It searches in lower (or upper?) trianguular matrix. Therefore this must be the format of the 
+//' input data. The piece of code int \code{len = (sqrt(X.size()*8+1)+1)/2} generated an error in CRAN
+//' since \code{sqrt} cannot be applied to integers.
 //' @keywords internal
 //' @useDynLib resemble
 //' @author Antoine Stevens 
 // [[Rcpp::export]]   
 NumericVector which_minV(NumericVector X,int cores){  
+  #ifdef _OPENMP
   omp_set_num_threads(cores);
+  #endif
   arma::uword  index;
-  int len = (sqrt(X.size()*8+1)+1)/2;
+  double vct = (sqrt(((double)X.size())*8.0+1.0)+1.0)/2.0;
+  int len = (int)vct;
+  // int len = (sqrt(X.size()*8+1)+1)/2;
   arma::uvec vindex(len);    
   int i,j;
   #pragma omp parallel for private(i,j) schedule(dynamic)
@@ -64,6 +78,7 @@ NumericVector which_minV(NumericVector X,int cores){
     x[i] = arma::datum::nan; // remove diag
     double z = x.min(index);
     vindex[i] = index;
+    z = z;
   }
   return wrap(vindex +1);
 }
