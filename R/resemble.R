@@ -1,8 +1,8 @@
-#'@description 
-#' This package implements a number of \code{R} functions useful for 
-#' modelling complex visible and infrared spectra(\acronym{vis-IR}). 
-#' The packages includes functions for for projecting spectral data 
-#' onto orthogonal spaces, computing spectral similarity/dissimilarity
+#' This is the version \code{1.2.0} (\code{'alma-de-coco'}) of the package. It 
+#' implements a number of \code{R} functions useful for 
+#' modeling complex visible and infrared spectra (\acronym{vis-IR}). 
+#' The package includes functions for projecting spectral data 
+#' onto orthogonal spaces, computing spectral dissimilarity
 #' matrices, removing irrelevant spectra from a reference set, 
 #' and modeling spectral data using memory-based learning.
 #' 
@@ -31,7 +31,7 @@
 #' \itemize{
 #'   \item{\code{\link{neigCleaning}}} 
 #'   }
-#' The functions available for modelling spectral data using 
+#' The functions available for modeling spectral data using 
 #' memory-based learning are:
 #' \itemize{
 #'   \item{\code{\link{mblControl}}}
@@ -45,13 +45,13 @@
 #'   \item{\code{\link{plot.orthoProjection}}}
 #'   \item{\code{\link{print.orthoProjection}}}
 #'   }
-#'@docType package
-#'@name resemble
-#'@title resemble package
-#'@import Rcpp RcppArmadillo foreach iterators pls
-#'@useDynLib resemble
-#'@author Leonardo Ramirez-Lopez & Antoine Stevens
-#'
+#' @docType package
+#' @name resemble-package
+#' @aliases resemble-package resemble
+#' @title Overview of the functions in the resemble package
+#' @import Rcpp RcppArmadillo foreach iterators
+#' @useDynLib resemble
+#' @author Leonardo Ramirez-Lopez \email{ramirez.lopez.leo@@gmail.com} & Antoine Stevens
 ######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
@@ -66,6 +66,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 ######################################################################
+
 
 ## History:
 ## 09.03.2014 Leo     History comments were added to the function files

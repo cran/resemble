@@ -8,6 +8,7 @@ using namespace Rcpp;
 // [[Rcpp::depends(RcppArmadillo)]]
 
 //' @title A function to compute row-wise index of minimum values of a square distance matrix
+//' @description For internal use only
 //' @usage 
 //' which_min(X,cores)
 //' @param X a square \code{matrix} of distance
@@ -30,14 +31,14 @@ NumericVector which_min(NumericMatrix X, int cores){
    for(int i = 0; i < nX; i++){
     arma::rowvec x = XX.row(i);
     x(i) = arma::datum::nan; // remove diag
-    double z = x.min(index);
-    vindex[i] = index;
-    z = z;
+    x.min(index); // don't assign result to a value since we are interested only in the index
+    vindex[i] = index;    
    }
    return wrap(vindex +1);   
 }
 
 //' @title A function to compute indices of minimum values of a distance vector
+//' @description For internal use only
 //' @usage 
 //' which_minV(X,cores)
 //' @param X a \code{vector} of distance (as computed in \code{resemble:::fastDistVV} or \code{base::dist})
@@ -76,9 +77,8 @@ NumericVector which_minV(NumericVector X,int cores){
       x[j] = X(k2);             
     }
     x[i] = arma::datum::nan; // remove diag
-    double z = x.min(index);
-    vindex[i] = index;
-    z = z;
+    x.min(index); // don't assign result to a value since we are interested only in the index
+    vindex[i] = index;    
   }
   return wrap(vindex +1);
 }

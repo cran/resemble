@@ -2,7 +2,8 @@
 #' @description
 #' This function is used to compute the dissimilarity between observations based on Euclidean or Mahalanobis distance measures or on cosine dissimilarity measures (a.k.a spectral angle mapper). 
 #' @usage 
-#' fDiss(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE)
+#' fDiss(Xr, X2 = NULL, method = "euclid", 
+#'       center = TRUE, scaled = TRUE)
 #' @param Xr a \code{matrix} (or \code{data.frame}) containing the (reference) data.
 #' @param X2 an optional \code{matrix} (or \code{data.frame}) containing data of a second set of observations(samples).
 #' @param method the method for computing the dissimilarity matrix. Options are \code{"euclid"} (Euclidean distance), \code{"mahalanobis"} (Mahalanobis distance) and \code{"cosine"} (cosine distance, a.k.a spectral angle mapper).
@@ -50,7 +51,8 @@
 #'                  center = TRUE, scaled = TRUE)
 #' 
 #' # Cosine dissimilarity matrix
-#' cdiss.xr.xu <- fDiss(Xr = Xr, X2 = Xu, method = "cosine", 
+#' cdiss.xr.xu <- fDiss(Xr = Xr, X2 = Xu, 
+#'                      method = "cosine", 
 #'                      center = TRUE, scaled = TRUE)
 #' @export
 
@@ -72,6 +74,8 @@
 ## History:
 ## 09.03.2014 Leo     The line rslt[is.na(rslt)] <- 0 was added in order 
 ##                    to deal with NaNs produced by the C++ code    
+## 18.11.2015 Leo     Bug fixed. Code crashed When Xr was of one row  
+
 
 fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE)
 {
@@ -119,7 +123,7 @@ fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE
     if(!is.null(X2))
     {
       X2 <- X[(nrow(X) - nrow(X2) +1):nrow(X), , drop = FALSE]
-      Xr <- X[1:(nrow(X) - nrow(X2)), ]
+      Xr <- X[1:(nrow(X) - nrow(X2)), , drop = FALSE]
     }else{
       Xr <- X
     }
@@ -146,6 +150,7 @@ fDiss <- function(Xr, X2 = NULL, method = "euclid", center = TRUE, scaled = TRUE
 
 
 #' @title A function for transforming a matrix from its Euclidean spcae to its Mahalanobis space
+#' @description For internal use only
 #' @keywords internal
 e2m <- function(X, sm.method = c("svd", "eigen")){
   
@@ -170,6 +175,7 @@ e2m <- function(X, sm.method = c("svd", "eigen")){
 
 
 #' @title Square root of (square) symetric matrices
+#' @description For internal use only
 #' @keywords internal
 sqrtSm <- function(X, method = c("svd", "eigen")){
   

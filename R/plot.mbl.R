@@ -1,4 +1,5 @@
 #' @title Plot method for an object of class \code{mbl}
+#' @description  Plots the content of an object of class \code{mbl}
 #' @aliases plot.mbl
 #' @usage \method{plot}{mbl}(x, g = c("validation", "pca"), param = "rmse", pcs = c(1,2), ...)
 #' @param x an object of class \code{mbl} (as returned by \code{mbl}). 
@@ -40,6 +41,16 @@
 #' plot(ex1)
 #' }
 #' @export
+###########################################################################
+## History:
+## 23.04.2014 Leo     Plot function when the data is not centred now 
+##                    draws the circles around the actual centre
+## 12.04.2015         When the circle was plotted there was an small
+##                    gap in it. This was fixed by modifiying the pntCirc 
+##                    function
+
+
+
 
 plot.mbl <- function(x, 
                      g = c("validation", "pca"), 
@@ -147,37 +158,46 @@ plot.mbl <- function(x,
       legend("topright", legend = c("Xr", "Xu"),
              col = c(rainbow(1, s = 1, v = 0, alpha = 0.3), heat.colors(1, alpha = 0.4)), pch = 16, cex = 0.8, box.lty = 3, box.col = "grey")
     }else{
-      rng <- range(object$pcAnalysis$scores_Xr[,pcs], object$pcAnalysis$scores_Xu[,pcs])
-      rng <- 1.2 * c(-max(abs(rng)), max(abs(rng)))
+      if(object$cntrlParam$center){
+        rng <- 1.2 * range(object$pcAnalysis$scores_Xr[,pcs], object$pcAnalysis$scores_Xu[,pcs])
+        rng1 <- rng2 <-  c(-max(abs(rng)), max(abs(rng)))
+      }else{
+        rng1 <- range(object$pcAnalysis$scores_Xr[,pcs[1]], object$pcAnalysis$scores_Xu[,pcs[1]])
+        rng2 <- range(object$pcAnalysis$scores_Xr[,pcs[2]], object$pcAnalysis$scores_Xu[,pcs[2]])
+      }
       
       xl <- paste(colnames(object$pcAnalysis$scores_Xr[,pcs[1],drop=F]), " (standardized)", sep = "") 
       yl <- paste(colnames(object$pcAnalysis$scores_Xr[,pcs[2],drop=F]), " (standardized)", sep = "") 
       
-      plot(object$pcAnalysis$scores_Xr[,pcs], xlab = xl, ylab = yl, xlim = rng, ylim = rng, 
+      plot(object$pcAnalysis$scores_Xr[,pcs], xlab = xl, ylab = yl, xlim = rng1, ylim = rng2, 
            col = rainbow(1, s = 1, v = 0, alpha = 0.3), pch = pch,
            col.axis = col.axis, ...)
       
       mtext("Prinipal component analyisis", col = grey(0.3))
       
-      points(object$pcAnalysis$scores_Xu[,pcs], xlim = rng, ylim = rng, col = heat.colors(1, alpha = 0.4), pch = pch)
+      points(object$pcAnalysis$scores_Xu[,pcs], xlim = rng1, ylim = rng2, col = heat.colors(1, alpha = 0.4), pch = pch)
       grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted",
            lwd = par("lwd"), equilogs = TRUE)
       legend("topright", legend = c("Xr", "Xu"),
              col = c(rainbow(1, s = 1, v = 0, alpha = 0.3), heat.colors(1, alpha = 0.4)), pch = pch, cex = 0.8, box.lty = 3, box.col = "grey")
       
-      pntCirc <- function(r){
+      pntCirc <- function(r) {
         n <- 100
-        a <- matrix(0, n, 2)
-        for(i in 1:n){
-          pnts <- (c(cos(2*pi/n*i)*r,sin(2*pi/n*i)*r))
-          a[i,] <- pnts
+        a <- matrix(0, n + 1, 2)
+        for (i in 1:n) {
+          pnts <- (c(cos(2 * pi/n * i) * r, sin(2 * pi/n * i) * r))
+          a[i, ] <- pnts
         }
+        a[i+1, ] <- a[1,]
         return(a)
       }
+        
       for(i in 1:floor(max(object$pcAnalysis$scores_Xr[,pcs]))){
         crc <- pntCirc(i)
         crc <- rbind(crc, crc[1,])
-        lines(crc, col = "dodgerblue", lty = 5, lwd = 0.5)
+        if(!object$cntrlParam$center)
+          crc <- sweep(x= crc, FUN = "+", MARGIN = 2, STATS = colMeans(object$pcAnalysis$scores_Xr[,pcs]))
+        lines(crc, col = "#9ED400", lty = 5, lwd = 0.5)
       }
     }
   }

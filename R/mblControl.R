@@ -11,11 +11,13 @@
 #'            center = TRUE,
 #'            scaled = TRUE,
 #'            valMethod = c("NNv", "loc_crossval"),
+#'            localOptimization = TRUE,
 #'            resampling = 10, 
 #'            p = 0.75,
 #'            range.pred.lim = TRUE,
 #'            progress = TRUE,
-#'            cores = 1)
+#'            cores = 1,            
+#'            allowParallel = TRUE)
 #' 
 #' @param sm a character string indicating the spectral dissimilarity metric to be used in the selection of the nearest neighbours of each observation for which a prediction is required (see \code{\link{mbl}}). 
 #'        Options are: 
@@ -31,7 +33,9 @@
 #'        \item{\code{"pls"}: Partial least squares dissimilarity: Mahalanobis dissimilarity computed on the partial least squares space.}
 #'        \item{\code{"loc.pls"} Dissimilarity estimation based on local partial least squares.}
 #'        }
-#'        The \code{"pc"} spectral dissimilarity metric is the default. If the \code{"sidD"} is chosen, the default parameters of the \code{sid} function are used however they cab be modified by specifying them as additional arguments in the \code{\link{mbl}} function. This argument can also be set to \code{NULL}, in such a case, a dissimilarity matrix must be specified in the \code{dissimilarityM} argument of the \code{\link{mbl}} function.
+#'        The \code{"pc"} spectral dissimilarity metric is the default. If the \code{"sidD"} is chosen, the default parameters of the \code{sid} function are used however they cab be modified by specifying them as additional arguments in the \code{\link{mbl}} function.  
+#'        
+#'        This argument can also be set to \code{"none"}, in such a case, a dissimilarity matrix must be specified in the \code{dissimilarityM} argument of the \code{\link{mbl}} function.
 #' @param pcSelection a list which specifies the method to be used for identifying the number of principal components to be retained for computing the Mahalanobis dissimilarity of each sample in \code{sm = "Xu"} to the centre of \code{sm = "Xr"}. It also specifies the number of components in any of the following cases: \code{sm = "pc"}, \code{sm = "loc.pc"}, \code{sm = "pls"} and \code{sm = "loc.pls"}. This list must contain two objects in the following order: \itemize{
 #'        \item{\code{method}:}{the method for selecting the number of components. Possible options are:  \code{"opc"} (optimized pc selection based on Ramirez-Lopez et al. (2013a, 2013b). See the \code{\link{orthoProjection}} function for more details;  \code{"cumvar"} (for selecting the number of principal components based on a given cumulative amount of explained variance); \code{"var"} (for selecting the number of principal components based on a given amount of explained variance); and  \code{"manual"} (for specifying manually the desired number of principal components)}
 #'        \item{\code{value}:}{a numerical value that complements the selected method. If \code{"opc"} is chosen, it must be a value indicating the maximal number of principal components to be tested (see Ramirez-Lopez et al., 2013a, 2013b). If \code{"cumvar"} is chosen, it must be a value (higher than 0 and lower than 1) indicating the maximum amount of cumulative variance that the retained components should explain. If \code{"var"} is chosen, it must be a value (higher than 0 and lower than 1) indicating that components that explain (individually) a variance lower than this threshold must be excluded. If \code{"manual"} is chosen, it must be a value specifying the desired number of principal components to retain.
@@ -45,12 +49,14 @@
 #' @param center a logical indicating whether or not the predictor variables must be centered at each local segment (before regression).
 #' @param scaled a logical indicating whether or not the predictor variables must be scaled at each local segment (before regression).
 #' @param valMethod a character vector which indicates the (internal) validation method(s) to be used for assessing the global performance of the local models. Possible
-#'        options are: \code{"NNv"} and \code{"loc_crossval"}. For no validation \code{"none"} is used (see details below).
+#'        options are: \code{"NNv"} and \code{"loc_crossval"}. Alternatively \code{"none"} can be used when corss-validation is not required (see details below).
+#' @param localOptimization a logical. If \code{valMethod = "loc_crossval"}, it optmizes the parameters of the local pls models (i.e. pls factors for \code{pls} and minimum and maximum pls factors for \code{wapls1}).
 #' @param resampling a value indicating the number of resampling iterations at each local segment when \code{"loc_crossval"} is selected in the \code{valMethod} argument. Default is 10.
 #' @param p a value indicating the percentage of samples to be retained in each resampling iteration at each local segment when \code{"loc_crossval"} is selected in the \code{valMethod} argument. Default is 0.75 (i.e. 75 "\%")
 #' @param range.pred.lim a logical value. It indicates whether the prediction limits at each local regression are determined by the range of the response variable values employed at each local regression. If \code{FALSE}, no prediction limits are imposed. Default is \code{TRUE}.
 #' @param progress a logical indicating whether or not to print a progress bar for each sample to be predicted. Default is \code{TRUE}. Note: In case multicore processing is used, this progress bar will not be printed.
 #' @param cores number of cores used for the computation of dissimilarities when \code{method} in \code{pcSelection} is \code{"opc"} (which can be computationally intensive) (default = 1). See details.
+#' @param allowParallel To allow parallel execution of the sample loop (default is \code{TRUE})
 #' @details
 #' The validation methods avaliable for assessing the predictive performance of the memory-based learning method used are described as follows:
 #'  \itemize{
@@ -75,7 +81,6 @@
 #' #dissimilarity metric with a moving window of 30
 #' mblControl(sm = "movcor", ws = 31)
 #' @export
-
 ######################################################################
 # resemble
 # Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
@@ -95,6 +100,10 @@
 ## 09.03.2014 Leo     In the doc was specified that multi-threading is 
 ##                    not working for mac
 ## 13.03.2014 Antoine The explanation of the cores argument was modified
+## 18.11.2015 Leo     A sanity check for avoiding potential sm = NULL was 
+##                    introduced
+## 15.12.2015 Leo     A bug when checking the valMethod provided was fixed
+
 
 mblControl <- function(sm = "pc",
                        pcSelection = list("opc", 40),
@@ -105,37 +114,42 @@ mblControl <- function(sm = "pc",
                        center = TRUE,
                        scaled = TRUE,
                        valMethod = c("NNv", "loc_crossval"),
+                       localOptimization = TRUE,
                        resampling = 10, 
                        p = 0.75,
                        range.pred.lim = TRUE,
-                       progress = TRUE, cores = 1){
+                       progress = TRUE, cores = 1,
+                       allowParallel = TRUE){
   # Sanity checks
-  if(sm == "none")
-  {
-    message("'sm' was set to 'none'. You will have to provide a dissimilarity matrix to the mbl function by using the 'dissimilarityM' argument")
-  }else{
-    
-    if(!missing(sm))
-      match.arg(sm, c("euclid", "cosine", "sidF", "sidD", "cor", "movcor", "pc", "loc.pc", "pls", "loc.pls", "none"))
+  if(!is.logical(allowParallel))
+    stop("allowParallel must be a logical value")
   
-    if(sm == "pc")
-      match.arg(pcMethod, c("svd", "nipals"))
-    
-    if(sm == "movcor"){
-      if(ws < 3 | length(ws) != 1) 
-        stop(paste("'ws' must be an unique odd value greater than 2")) 
-      if((ws %% 2) == 0)
-        stop("'ws' must be an odd value")
-      smParam <- ws
-    }
-    
-    if(sm %in% c("loc.pc", "loc.pls")){
-      if(missing(k0))
-        stop("If 'sm' is either 'loc.pc' or 'loc.pls', k0 must be provided")
-      if(k0 < 10 | length(k0) != 1) 
-        stop(paste("'k0' must be an positive integer value greater than 10")) 
-      smParam <- k0
-    }
+  
+  ## "none" must go first in case sm = NULL (argument wrongly set)
+  sm <- match.arg(sm, c("none", "euclid", "cosine", "sidF", "sidD", "cor", "movcor", "pc", "loc.pc", "pls", "loc.pls"))
+  
+  if(sm == "none"){
+    message("A spectral dissimilarity metric ('sm' argument) was not specified and it has been set to 'none'. You will have to provide a dissimilarity matrix to the mbl function by using the 'dissimilarityM' argument")
+  }
+  
+  
+  if(sm == "pc")
+    match.arg(pcMethod, c("svd", "nipals"))
+  
+  if(sm == "movcor"){
+    if(ws < 3 | length(ws) != 1) 
+      stop(paste("'ws' must be an unique odd value greater than 2")) 
+    if((ws %% 2) == 0)
+      stop("'ws' must be an odd value")
+    smParam <- ws
+  }
+  
+  if(sm %in% c("loc.pc", "loc.pls")){
+    if(missing(k0))
+      stop("If 'sm' is either 'loc.pc' or 'loc.pls', k0 must be provided")
+    if(k0 < 10 | length(k0) != 1) 
+      stop(paste("'k0' must be an positive integer value greater than 10")) 
+    smParam <- k0
   }
   
   if(!is.logical(returnDiss))
@@ -204,7 +218,7 @@ mblControl <- function(sm = "pc",
   if(!is.logical(scaled))
     stop("'scaled' argument must be logical")
   
-  if(sum(valMethod %in% c("NNv", "loc_crossval", "none")) == 0)
+  if(sum(valMethod %in% c("NNv", "loc_crossval", "none")) != length(valMethod))
     stop("'valmethod' must be one at least one of 'NNv', 'loc_crossval', 'none'")
   
   if("none" %in% valMethod)
@@ -238,11 +252,12 @@ mblControl <- function(sm = "pc",
                   center = center,
                   scaled = scaled,
                   valMethod = valMethod,
+                  localOptimization = localOptimization,
                   resampling = resampling, 
                   p = p,
                   range.pred.lim = range.pred.lim,
                   progress = progress, 
-                  cores = cores)
+                  cores = cores, allowParallel = allowParallel)
     nm <- ifelse(sm == "movcor", "ws", "k0")
     names(cntrl)[names(cntrl) == "smParam"] <- nm
     
@@ -254,11 +269,12 @@ mblControl <- function(sm = "pc",
                   center = center,
                   scaled = scaled,
                   valMethod = valMethod,
+                  localOptimization = localOptimization,
                   resampling = resampling, 
                   p = p,
                   range.pred.lim = range.pred.lim,
                   progress = progress, 
-                  cores = cores)
+                  cores = cores, allowParallel = allowParallel)
   }
   return(cntrl)
 }

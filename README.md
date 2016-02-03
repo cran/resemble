@@ -1,29 +1,38 @@
-# resemble: Regression and similarity evaluation for memory-based learning in spectral chemometrics
-_Leonardo Ramirez-Lopez & Antoine Stevens_
+[![Travis-CI Build Status](https://travis-ci.org/l-ramirez-lopez/resemble.svg?branch=master)](https://travis-ci.org/l-ramirez-lopez/resemble/)
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/resemble)](http://cran.r-project.org/web/packages/resemble)
+
+
+# resemble: Regression and Similarity Evaluation for Memory-Based Learning in Spectral Chemometrics
+_Leo Ramirez-Lopez & Antoine Stevens_
+
+_Last update: 15.12.2015 :::: 12:03 GMT+1_
 
 Visit the [`resemble` site here](http://l-ramirez-lopez.github.io/resemble/)
 
-You download the [binary (.zip) file from here](https://github.com/l-ramirez-lopez/resemble/blob/master/Installers/resemble_1.1.1.zip?raw=true) or the [source file (.tar.gz) from here](https://github.com/l-ramirez-lopez/resemble/blob/master/Installers/resemble_1.1.1.tar.gz?raw=true). Remeber you should have [R>=3.0.2](http://cran.r-project.org/). Supose you downloaded the binary file to 'C:/MyFolder/', then you should be able to install the package as follows:
+For the development version, download the [binary (.zip) file from here](https://github.com/l-ramirez-lopez/resemble/archive/1.2.0.9000.zip) or the [source file (.tar.gz) from here](https://github.com/l-ramirez-lopez/resemble/archive/1.2.0.9000.tar.gz). Remember you should have [R>=3.2.2](http://cran.r-project.org/). Suppose you downloaded the binary file to 'C:/MyFolder/', then you should be able to install the package as follows:
 
 If you do not have the following packages installed, you should install them first
 ```
 install.packages('Rcpp')
 install.packages('RcppArmadillo')
-install.packages('pls')
 install.packages('foreach')
 install.packages('iterators')
 ```
+__Note__: Apart from these packages we stronly recommend to download and install Rtools ([directly from here](http://cran.r-project.org/web/packages/devtools/index.html) or from CRAN [https://cran.r-project.org/bin/windows/Rtools/](https://cran.r-project.org/bin/windows/Rtools/)). 
+This is important for obtaining the proper C++ toolchain that you might need for using `resemble`.
+
 Then, install `resemble`
 
 ```
-install.packages('C:/MyFolder/resemble_1.1.1.zip')
+install.packages('C:/MyFolder/resemble-1.2.0.9000.zip', repos = NULL)
 ````
 or
 
 ```
-install.packages('C:/MyFolder/resemble_1.1.1.tar.gz', type = 'source')
+install.packages('C:/MyFolder/resemble-1.2.0.9000.tar.gz', type = 'source', repos = NULL)
 ```
-You can also install the `resemble` package directly from github using [`devtools`](http://cran.r-project.org/web/packages/devtools/index.html) (with a proper installed version of [Rtools](http://cran.r-project.org/bin/windows/Rtools/)):
+
+You can also install the `resemble` package directly from github using [`devtools`](http://cran.r-project.org/web/packages/devtools/index.html) (along with a proper installed version of [Rtools](http://cran.r-project.org/bin/windows/Rtools/)):
 
 ```
 require("devtools")
@@ -57,12 +66,11 @@ Yr <- Yr[!is.na(Yr)]
 # Example of the mbl function
 # A mbl approach (the spectrum-based learner) as implemented in Ramirez-Lopez et al. (2013)
 # An exmaple where Yu is supposed to be unknown, but the Xu (spectral variables) are known
-ctrl1 <- mblControl(sm = 'pc', pcSelection = list('opc', 40),
-                    valMethod = 'NNv',
-                    scaled = TRUE, center = TRUE)
+ctrl <- mblControl(sm = 'pc', pcSelection = list('opc', 40),
+                   valMethod = 'NNv', center = TRUE)
 
 sbl.u <- mbl(Yr = Yr, Xr = Xr, Yu = NULL, Xu = Xu,
-             mblCtrl = ctrl1,
+             mblCtrl = ctrl,
              dissUsage = 'predictors',
              k = seq(40, 150, by = 10),
              method = 'gpr')
@@ -122,13 +130,18 @@ __`'wapls2'`__:                                Weighted average partial least sq
 * _Soil spectroscopy_
 
 ## News
-
-2014-03: The package was released on CRAN!
+* 2016-01: The version 1.2 (alma-de-coco) has been submitted to CRAN and is available from the github repository!
+* 2015-11: A pre-release of the version 1.2.0 (1.2.0.9000 alma-de-coco) is now available! `resemble` is now faster! Some critical functions (e.g. pls and gaussian process regressions were re-written in C++ using `Rcpp`. This time the new version will be available at CRAN very soon! (we promise).
+* 2015-11 Well, the version 1.1.3 was never released on CRAN since we decided to carry out major improvements in terms of computational performance so that we can overcome the "spell" of local regressions ;) (the computational time). 
+* 2014-10: A pre-release of the version 1.1.3 of the package is already available at this website. We hope it will be available at CRAN very soon!
+* 2014-06: Check  [this video](https://www.youtube.com/watch?v=7sCIEeNehgE&feature=youtu.be) where a renowned NIR scientist talks about local calibrations.
+* 2014-04: A short note on the resemble and prospectr packages was published in [this newsletter](www.pedometrics.org/Pedometron/Pedometron34.pdf). There we provide some examples on representative subset selection and on how to reproduce the LOCAL and spectrum-based learner algorithms. In those examples the dataset of the Chemometric challenge of 'Chimiométrie 2006' (included in the prospectr package) is used.
+* 2014-03: The package was released on CRAN!
 
 ## Other R'elated stuff
 * [Check our other project called `prospectr`.](http://antoinestevens.github.io/prospectr/)
-* [Check this presentation in which we used the resemble package was used to predict soil attributes from large scale soil spectral libraries.](http://www.fao.org/fileadmin/user_upload/GSP/docs/Spectroscopy_dec13/SSW2013_f.pdf)
+* [Check this presentation in which we used the resemble package to predict soil attributes from large scale soil spectral libraries.](http://www.fao.org/fileadmin/user_upload/GSP/docs/Spectroscopy_dec13/SSW2013_f.pdf)
 
 ## Bug report and development version
 
-You can send an email to the package maintainer (<leonardo.ramirez@usys.ethz.ch>; <leonardo.ramirez@wsl.ch>) or create an [issue](https://github.com/l-ramirez-lopez/resemble/issues) on github. 
+You can send an e-mail to the package maintainer (<ramirez.lopez.leo@gmail.com>) or create an [issue](https://github.com/l-ramirez-lopez/resemble/issues) on github. 
