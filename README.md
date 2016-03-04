@@ -1,17 +1,13 @@
-[![Travis-CI Build Status](https://travis-ci.org/l-ramirez-lopez/resemble.svg?branch=master)](https://travis-ci.org/l-ramirez-lopez/resemble/)
-[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/resemble)](http://cran.r-project.org/web/packages/resemble)
-
-
-# resemble: Regression and Similarity Evaluation for Memory-Based Learning in Spectral Chemometrics
+# Regression and Similarity Evaluation for Memory-Based Learning in Spectral Chemometrics
 _Leo Ramirez-Lopez & Antoine Stevens_
-
-_Last update: 15.12.2015 :::: 12:03 GMT+1_
 
 Visit the [`resemble` site here](http://l-ramirez-lopez.github.io/resemble/)
 
-For the development version, download the [binary (.zip) file from here](https://github.com/l-ramirez-lopez/resemble/archive/1.2.0.9000.zip) or the [source file (.tar.gz) from here](https://github.com/l-ramirez-lopez/resemble/archive/1.2.0.9000.tar.gz). Remember you should have [R>=3.2.2](http://cran.r-project.org/). Suppose you downloaded the binary file to 'C:/MyFolder/', then you should be able to install the package as follows:
-
-If you do not have the following packages installed, you should install them first
+Installing the package is very simple:
+```
+install.packages('resemble')
+```
+If you do not have the following packages installed, in some cases it is better to install them first
 ```
 install.packages('Rcpp')
 install.packages('RcppArmadillo')
@@ -24,21 +20,9 @@ This is important for obtaining the proper C++ toolchain that you might need for
 Then, install `resemble`
 
 ```
-install.packages('C:/MyFolder/resemble-1.2.0.9000.zip', repos = NULL)
+install.packages('C:/MyFolder/resemble-1.2.2.zip', repos = NULL)
 ````
-or
-
-```
-install.packages('C:/MyFolder/resemble-1.2.0.9000.tar.gz', type = 'source', repos = NULL)
-```
-
-You can also install the `resemble` package directly from github using [`devtools`](http://cran.r-project.org/web/packages/devtools/index.html) (along with a proper installed version of [Rtools](http://cran.r-project.org/bin/windows/Rtools/)):
-
-```
-require("devtools")
-install_github("resemble","l-ramirez-lopez")
-```
-
+The development version can be obtained at the [package website](http://l-ramirez-lopez.github.io/resemble/)
 
 After installing `resemble` you should be also able to run the following lines:
 
@@ -119,7 +103,7 @@ In order to predict each value in Yu, the `mbl` function takes each sample in Xu
 __`'gpr'`__:                                   Gaussian process with linear kernel        
 __`'pls'`__:                                   Partial least squares                      
 __`'wapls1'`__:                                Weighted average partial least squares 1   
-__`'wapls2'`__:                                Weighted average partial least squares 2   
+__`'wapls2'`__:                                Weighted average partial least squares 2 (no longer supported)
 
 ## Keywords
 * _Infrared spectroscopy_
@@ -128,15 +112,6 @@ __`'wapls2'`__:                                Weighted average partial least sq
 * _Spectral library_
 * _Lazy learning_
 * _Soil spectroscopy_
-
-## News
-* 2016-01: The version 1.2 (alma-de-coco) has been submitted to CRAN and is available from the github repository!
-* 2015-11: A pre-release of the version 1.2.0 (1.2.0.9000 alma-de-coco) is now available! `resemble` is now faster! Some critical functions (e.g. pls and gaussian process regressions were re-written in C++ using `Rcpp`. This time the new version will be available at CRAN very soon! (we promise).
-* 2015-11 Well, the version 1.1.3 was never released on CRAN since we decided to carry out major improvements in terms of computational performance so that we can overcome the "spell" of local regressions ;) (the computational time). 
-* 2014-10: A pre-release of the version 1.1.3 of the package is already available at this website. We hope it will be available at CRAN very soon!
-* 2014-06: Check  [this video](https://www.youtube.com/watch?v=7sCIEeNehgE&feature=youtu.be) where a renowned NIR scientist talks about local calibrations.
-* 2014-04: A short note on the resemble and prospectr packages was published in [this newsletter](www.pedometrics.org/Pedometron/Pedometron34.pdf). There we provide some examples on representative subset selection and on how to reproduce the LOCAL and spectrum-based learner algorithms. In those examples the dataset of the Chemometric challenge of 'Chimiométrie 2006' (included in the prospectr package) is used.
-* 2014-03: The package was released on CRAN!
 
 ## Other R'elated stuff
 * [Check our other project called `prospectr`.](http://antoinestevens.github.io/prospectr/)

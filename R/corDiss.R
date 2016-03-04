@@ -23,7 +23,7 @@
 #' The function does not accept input data containing missing values.
 #' @return 
 #' a \code{matrix} of the computed dissimilarities. 
-#' @author Antine Stevens and Leonardo Ramirez-Lopez
+#' @author Antoine Stevens and Leonardo Ramirez-Lopez
 #' @examples
 #' \dontrun{
 #' require(prospectr)
@@ -64,6 +64,9 @@
 
 corDiss <- function(Xr, X2 = NULL, ws = NULL, center = TRUE, scaled = TRUE)
 {
+  
+  if(!ncol(Xr) >= 2)
+    stop("For correlation dissimilarity the number of variables must be larger than 1")
   if(!is.null(X2)){
     if(ncol(X2) != ncol(Xr))
       stop("The number of columns (variables) in Xr must be equal to the number of columns (variables) in X2")
