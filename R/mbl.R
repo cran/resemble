@@ -1,336 +1,556 @@
 #' @title A function for memory-based learning (mbl)
 #' @description
-#' This function is implemented for memory-based learning (a.k.a. instance-based learning or local regression) which is a non-linear lazy learning approach 
-#' for predicting a given response variable from a set of (spectral) predictor variables. For each sample in an prediction set  a specific local 
-#' regression is carried out based on a subset of similar samples (nearest neighbours) selected from a reference set. The local model is 
-#' then used to predict the response value of the target (prediction) sample. Therefore this function does not yield a global regression model. 
+#' \loadmathjax
+#' This function is implemented for memory-based learning (a.k.a.
+#' instance-based learning or local regression) which is a non-linear lazy
+#' learning approach for predicting a given response variable from a set of
+#' predictor variables. For each observation in a prediction set, a specific
+#' local regression is carried out based on a subset of similar observations
+#' (nearest neighbors) selected from a reference set. The local model is
+#' then used to predict the response value of the target (prediction)
+#' observation. Therefore this function does not yield a global
+#' regression model.
 #' @usage
-#' mbl(Yr, Xr, Yu = NULL, Xu,
-#'     mblCtrl = mblControl(), 
-#'     dissimilarityM,
-#'     group = NULL,
-#'     dissUsage = "predictors", 
-#'     k, k.diss, k.range,
-#'     method, 
-#'     pls.c, pls.max.iter = 1, pls.tol = 1e-6,
-#'     noise.v = 0.001,
-#'     ...)
-#' @param Xr input \code{matrix} (or \code{data.frame}) of predictor variables of the reference data (observations in rows and variables in columns). 
-#' @param Yr a numeric \code{vector} containing the values of the response variable corresponding to the reference data
-#' @param Xu input \code{matrix} (or \code{data.frame}) of predictor variables of the data to be predicted (observations in rows and variables in columns). 
-#' @param Yu an optional numeric \code{vector} containing the values of the response variable corresponding to the data to be predicted
-#' @param mblCtrl a list (created with the \code{\link{mblControl}} function) which contains some parameters that control the some aspects of the \code{mbl} function. See the \code{\link{mblControl}} function for more details. 
-#' @param dissimilarityM (optional) a dissimilarity matrix. This argument can be used in case a user-defined dissimilarity matrix is preferred over the automatic dissimilarity matrix computation specified in the \code{sm} argument of the  \code{\link{mblControl}} function. When \code{dissUsage = "predictors"}, \code{dissimilarityM} must be a square symmetric dissimilarity matrix (derived from a matrix of the form \code{rbind(Xr, Xu)}) for which the diagonal values are zeros (since the dissimilarity between an object and itself must be 0). 
-#'        On the other hand if \code{dissUsage} is set to either \code{"weights"} or \code{"none"}, \code{dissimilarityM} must be a \code{matrix} representing the dissimilarity of each element in \code{Xu} to each element in \code{Xr}. The number of columns of the object correspondent to \code{dissimilarityM} must be equal to the number of rows in \code{Xu} and the number of rows equal to the number of rows in \code{Xr}.
-#'        If both \code{dissimilarityM} and  \code{sm} are specified, only the \code{dissimilarityM} argument will be taken into account.
-#' @param group an optional \code{factor} (or \code{vector} that can be coerced to a \code{factor} by \code{as.factor}) to be taken into account for internal validations. The length of the \code{vector} must be equal to \code{nrow(Xr)}, giving the identifier of related observations (e.g. spectra collected from the same batch of measurements, from the same sample, from samples with very similar origin, etc). When one observation is selected for cross validation, all observations of the same group are removed together and assigned to validation. See details.
-#' @param dissUsage specifies how the dissimilarity information shall be used. The possible options are: \code{"predictors"}, \code{"weights"} and \code{"none"} (see details below).
-#'        Default is "predictors".
-#' @param k a numeric (integer) \code{vector} containing the sequence of k nearest neighbours to be tested. Either \code{k} or \code{k.diss} must be specified. Numbers with decimal values will be coerced to their next higher integer values. This \code{vector} will be automatically sorted into ascending order.
-#' @param k.diss a \code{vector} containing the sequence of dissimilarity thresholds to be tested. When the dissimilarity between a sample in \code{Xr} and a sample \code{Xu} is below the given threshold, the sample in sample in \code{Xr} is treated as a neighbour of the sample in \code{Xu}, otherwise it is ignored.  These thresholds depend
-#'        on the corresponding dissimilarity measure specified in \code{sm}. Either \code{k} or \code{k.diss} must be specified.
-#' @param k.range a \code{vector} of length 2 which specifies the minimum (first value) and the maximum (second value) number of neighbours allowed when the \code{k.diss} argument is used. 
-#' @param method a character string indicating the method to be used at each local multivariate regression. Options are: \code{"pls"}, \code{"wapls1"} and \code{"gpr"} (see details below). Note: \code{"wapls2"} from the previos version of the package is no longer available/supported.
-#' @param pls.c the number of pls components to be used in the regressions if either \code{"pls"} or \code{"wapls1"} is used.
-#'        When \code{"pls"} is used, this argument must be a single numerical value. When \code{"wapls1"} is used, this argument must be
-#'        a \code{vector} of length 2 indicating the minimum (first value) and the maximum (second value) number of pls components
-#'        used for the regressions (see details below).
-#' @param pls.max.iter maximum number of iterations for the partial least squares methods.
-#' @param pls.tol limit for convergence in the partial orthogonal scores partial least squares regressions using the nipals algorithm. Default is 1e-6.
-#' @param noise.v a value indicating the variance of the noise for Gaussian process regression. Default is 0.001. 
-#' @param ... additional arguments to be passed to other functions. 
-#' @details
-#' By using the \code{group} argument one can specify observations (spectra) groups of samples that have something in common e.g. spectra collected from the same batch of measurements, from the same sample, from samples with very similar origin, etc) which could produce biased cross-validation results due to pseudo-replication. This argument allows to select calibration points that are independent from the validation ones in cross-validation. In this regard, when  \code{valMethod = "loc_crossval"} (used in \code{\link{mblControl}} function), then the \code{p} argument refer to the percentage of groups of samples (rather than single samples) to be retained in each resampling iteration at each local segment. 
-#' The \code{dissUsage} argument is used to specifiy whether the dissimilarity information must be used within the local regressions and (if so), how. When \code{dissUsage = "predictors"}
-#' the local (square symmetric) dissimilarity matrix corresponding the selected neighbourhood is used as source
-#' of additional predictors (i.e the columns of this local matrix are treated as predictor variables). In some cases this may result in an improvement 
-#' of the prediction performance (Ramirez-Lopez et al., 2013a). If \code{dissUsage = "weights"}, the neighbours of the query point (\eqn{xu_{j}}) are weighted according to their dissimilarity (e.g. distance) to \eqn{xu_{j}} prior carrying out each local regression. 
-#' The following tricubic function (Cleveland and Delvin, 1988; Naes et al., 1990) is used for computing the final weights based on the measured dissimilarities:
-#' \deqn{W_{j}  =  (1 - v^{3})^{3}}
-#' where if \eqn{xr_{i} \in} neighbours of \eqn{xu_{j}}:
-#' \deqn{v_{j}(xu_{j})  =  d(xr_{i}, xu_{j})}
-#' otherwise:
-#' \deqn{v_{j}(xu_{j})  =  0}
-#' In the above formulas \eqn{d(xr_{i}, xu_{j})} represents the dissimilarity between the query point and each object in \eqn{Xr}. When \code{dissUsage = "none"} is chosen
-#' the dissimilarity information is not used. 
-#' The possible options for performing regressions at each local segment implemented in the \code{mbl} function are described as follows: \itemize{
-#'  \item{Partial least squares (\code{"pls"}):}{ It uses the orthogonal scores (non-linear iterative partial least squares, nipals) algorithm. The only parameter which needs to be optimized is the number of pls components. This can be done by cross-validation at each local segment.}
-#'  \item{Weighted average pls (\code{"wapls1"}):}{ It uses multiple models generated by multiple pls components (i.e. between a minimum and a maximum number of pls components). At each local partition the final predicted value is a weighted average of all the predicted values generated by the multiple pls models. The weight for each component is calculated as follows: 
-#'  \deqn{
-#'        w_{j}  =  \frac{1}{s_{1:j}\times g_{j}}
-#'        }
-#'  where \eqn{s_{1:j}} is the root mean square of the spectral residuals of the unknown (or target) sample when a total of \eqn{j} pls components are used and \eqn{g_{j}} is the root mean square of the regression coefficients corresponding to the \eqn{j}th pls component (see Shenk et al., 1997 for more details). \code{"wapls1"} is not compatible with \code{valMethod = "loc_crossval"} since the weights are computed based on the sample to be predicted at each local iteration.}
-#'  \item{Gaussian process with dot product covariance (\code{"gpr"}):}{ Gaussian process regression is a probabilistic and non-parametric Bayesian approach. It is commonly described as a collection of random variables which have a joint Gaussian distribution and it is characterized by both a mean and a covariance function (Williams and Rasmussen, 1996). The covariance function used in the implemented method is the dot product, which inplies that there are no parameters to be optimized for the computation of the covariance.
-#'  Here, the process for predicting the response variable of a new sample (\eqn{y_{new}}) from its predictor variables (\eqn{x_{new}}) is carried out first by computing a prediction vector (\eqn{A}). It is derived from a set of reference spectra (\eqn{X}) and their respective response vector (\eqn{Y}) as follows: 
-#'   \deqn{
-#'       A = (X  X^\textup{T} + \sigma^2 I)^{-1} Y
-#'    }
-#'   where  \eqn{\sigma^2} denotes the variance of the noise and \eqn{I} the identity matrix (with dimensions equal to the number of observations in \eqn{X}). The prediction of \eqn{y_{new}} is then carried out by:
-#'   \deqn{
-#'     y_{new} = (x_{new}x_{new}^\textup{T}) A
-#'     }
-#'     }
-#'  }
-#' The loop used to iterate over the \code{Xu} samples in \code{mbl} uses the \code{\%dopar\%} operator of the \code{\link{foreach}} package, which can be used to parallelize this internal loop. The last example given in the \code{\link{mbl}} function ilustrates how to parallelize the \code{\link{mbl}} function.
-#' Note that the computational cost depends largely on the way on which the arguments of the function are set. For big datasets, it is recommended to carefully select the values of the parameters to test (e.g. validation method, regression method, dissimilarity information usage, dissimilarity method).
-#' @return a \code{list} of class \code{mbl} with the following components (sorted by either \code{k} or \code{k.diss} according to the case):
+#' mbl(Xr, Yr, Xu, Yu = NULL, k, k_diss, k_range, spike = NULL,
+#'     method = local_fit_wapls(min_pls_c = 3, max_pls_c = min(dim(Xr), 15)),
+#'     diss_method = "pca", diss_usage = "predictors",
+#'     gh = TRUE, pc_selection = list(method = "opc", value = min(dim(Xr), 40)),
+#'     control = mbl_control(), group = NULL,
+#'     center = TRUE, scale = FALSE, verbose = TRUE, 
+#'     documentation = character(), ...)
+#'
+#' @param Xr a matrix of predictor variables of the reference data
+#' (observations in rows and variables in columns).
+#' @param Yr a numeric matrix of one column containing the values of the
+#' response variable corresponding to the reference data.
+#' @param Xu a matrix of predictor variables of the data to be predicted
+#' (observations in rows and variables in columns).
+#' @param Yu an optional matrix of one column containing the values of the
+#' response variable corresponding to the data to be predicted. Default is
+#' \code{NULL}.
+#' @param k a vector of integers specifying the sequence of k-nearest
+#' neighbors to be tested. Either \code{k} or \code{k_diss} must be specified.
+#' This vector will be automatically sorted into ascending order. If
+#' non-integer numbers are passed, they will be coerced to the next upper
+#' integers.
+#' @param k_diss a numeric vector specifying the sequence of dissimilarity
+#' thresholds to be tested for the selection of the nearest neighbors found in
+#' \code{Xr} around each observation in \code{Xu}. These thresholds depend on
+#' the corresponding dissimilarity measure specified in the object passed to
+#' \code{control}. Either \code{k} or \code{k_diss} must be specified.
+#' @param k_range an integer vector of length 2 which specifies the minimum
+#' (first value) and the maximum (second value) number of neighbors to be
+#' retained when the \code{k_diss} is given.
+#' @param spike an integer vector indicating the indices of observations in
+#' \code{Xr} that must be forced into the neighborhoods of every \code{Xu}
+#' observation. Default is \code{NULL} (i.e. no observations are forced). Note
+#' that this argument is not intended for increasing the neighborhood size which
+#' is only controlled by \code{k} or \code{k_diss} and \code{k_range}. By
+#' forcing observations into the neighborhood, some observations will be forced
+#' out of the neighborhood. See details.
+#' @param method an object of class \code{\link{local_fit}} which indicates the
+#' type of regression to conduct at each local segment as well as additional
+#' parameters affecting this regression. See \code{\link{local_fit}} function.
+#' @param diss_method a character string indicating the spectral dissimilarity
+#' metric to be used in the selection of the nearest neighbors of each
+#' observation. Options are:
 #' \itemize{
-#'  \item{\code{call}:}{ the call used.}
-#'  \item{\code{cntrlParam}:}{ the list with the control parameters used. If one or more control parameters were reset automatically, then a list containing a list with the initial control parameters specified and a list with the parameters which were finally used.}
-#'  \item{\code{dissimilarities}:}{ a list with the method used to obtain the dissimilarity matrices and the dissimilarity matrices corresponding to \eqn{D(Xr, Xu)} and \eqn{D(Xr,Xr)} if \code{dissUsage = "predictors"}. This object is returned only if the \code{returnDiss} argument in the \code{mblCtrl} list was set to \code{TRUE} in the the call used.}
-#'  \item{\code{totalSamplesPredicted}}{ the total number of samples predicted.}
-#'  \item{\code{pcAnalysis}:}{ a list containing the results of the principal component analysis. The first two objects (\code{scores_Xr} and \code{scores_Xu}) are the scores of the \code{Xr} and \code{Xu} matrices. It also contains the number of principal components used (\code{n.componentsUsed}) and another object which is  a \code{vector} containing the standardized Mahalanobis dissimilarities (also called GH, Global H distance) between each sample in \code{Xu} and the centre of \code{Xr}.}
-#'  \item{\code{components}:}{ a list containing either the number of  principal components  or partial least squares components used for the computation of the orthogonal dissimilarities. This object is only returned if the dissimilarity meausre specified in \code{mblCtrl} is any of the following options: \code{'pc'}, \code{'loc.pc'}, \code{"pls"}, \code{'loc.pls'}. If any of the local orthogonal dissimilarities was used (\code{'loc.pc'} or \code{"pls"})
-#'                            a \code{data.frame} is also returned in his list. This object is equivalent to the \code{loc.n.components} object returned by the \code{\link{orthoDiss}} function. It specifies the number of local components (either principal components or partial least squares components) used for computing the dissimilarity between each query sample and its neighbour samples, as returned by the \code{\link{orthoDiss}} function.
-#'                            }
-#'  \item{\code{nnValStats}:}{ a data frame containing the statistics of the nearest neighbour cross-validation for each either \code{k} or \code{k.diss} depending on the arguments specified in the call. It is returned only if \code{'NNv'} or \code{'both'} were selected as validation method}
-#'  \item{\code{localCrossValStats}:}{ a data frame containing the statistics of the local leave-group-out cross validation for each either \code{k} or \code{k.diss} depending on the arguments specified in the call. It is returned only if \code{'local_crossval'} or \code{'both'} were selected as validation method}
-#'  \item{\code{YuPredictionStats}:}{ a data frame containing the statistics of the cross-validation of the prediction of  \code{Yu} for each either \code{k} or \code{k.diss} depending on the arguments specified in the call. It is returned only if \code{Yu} was provided.}
-#'  \item{\code{results}:}{ a list of data frames which contains the results of the predictions for each either \code{k} or \code{k.diss}. Each \code{data.frame} contains the following columns:}
+#'        \item{\code{"pca"} (Default):}{ Mahalanobis distance
+#'        computed on the matrix of scores of a Principal Component (PC)
+#'        projection of \code{Xr} and \code{Xu}. PC projection is done using the
+#'        singular value decomposition (SVD) algorithm.
+#'        See \code{\link{ortho_diss}} function.}
+#'
+#'        \item{\code{"pca.nipals"}}{ Mahalanobis distance
+#'        computed on the matrix of scores of a Principal Component (PC)
+#'        projection of \code{Xr} and \code{Xu}. PC projection is done using the
+#'        non-linear iterative partial least squares (nipals) algorithm.
+#'        See \code{\link{ortho_diss}} function.}
+#'
+#'        \item{\code{"pls"}}{ Mahalanobis distance
+#'        computed on the matrix of scores of a partial least squares projection
+#'        of \code{Xr} and \code{Xu}. In this case, \code{Yr} is always
+#'        required. See \code{\link{ortho_diss}} function.}
+#'
+#'        \item{\code{"cor"}}{ correlation coefficient
+#'        between observations. See \code{\link{cor_diss}} function.}
+#'
+#'        \item{\code{"euclid"}}{ Euclidean distance
+#'        between observations. See \code{\link{f_diss}} function.}
+#'
+#'        \item{\code{"cosine"}}{ Cosine distance
+#'        between observations. See \code{\link{f_diss}} function.}
+#'
+#'        \item{\code{"sid"}}{ spectral information divergence between
+#'        observations. See \code{\link{sid}} function.}
+#'        }
+#' Alternatively, a matrix of dissimilarities can also be passed to this
+#' argument. This matrix is supposed to be a user-defined matrix
+#' representing the dissimilarities between observations in \code{Xr} and
+#' \code{Xu}. When \code{diss_usage = "predictors"}, this matrix must be squared
+#' (derived from a matrix of the form \code{rbind(Xr, Xu)}) for which the
+#' diagonal values are zeros (since the dissimilarity between an object and
+#' itself must be 0). On the other hand, if \code{diss_usage} is set to either
+#' \code{"weights"} or \code{"none"}, it must be a matrix representing the
+#' dissimilarity of each observation in \code{Xu} to each observation in
+#' \code{Xr}. The number of columns of the input matrix must be equal to the
+#' number of rows in \code{Xu} and the number of rows equal to the number of
+#' rows in \code{Xr}.
+#' @param diss_usage a character string specifying how the dissimilarity
+#' information shall be used. The possible options are: \code{"predictors"},
+#' \code{"weights"} and \code{"none"} (see details below).
+#' Default is \code{"predictors"}.
+#' @param control a list created with the \code{\link{mbl_control}} function
+#' which contains additional parameters that control some few aspects of the
+#' \code{mbl} function (cross-validation, parameter tuning, etc).
+#' The default list is as returned by \code{mbl_control()}.
+#' See the \code{\link{mbl_control}} function for more details.
+#' @param gh a logical indicating if the global Mahalanobis distance (in the pls
+#' score space) between each observation and the pls mean (centre) must be
+#' computed. This metric is known as the GH distance in the literature. Note
+#' that this computation is based on the number of pls components determined by
+#' using the \code{pc_selection} argument. See details.
+#' @param pc_selection a list of length 2 used for the computation of GH (if
+#' \code{gh = TRUE}) as well as in the computation of the dissimilarity methods
+#' based on \code{\link{ortho_diss}} (i.e. when \code{diss_method} is one of:
+#' \code{"pca"}, \code{"pca.nipals"} or \code{"pls"}) or when \code{gh = TRUE}.
+#' This argument is used for optimizing the number of components (principal
+#' components or pls factors) to be retained for dissimilarity/distance
+#' computation purposes only (i.e not for regression).
+#' This list must contain two elements in the following order:
+#' \code{method} (a character indicating the method for selecting the number of
+#' components) and \code{value} (a numerical value that complements the selected
+#' method). The methods available are:
+#' \itemize{
+#'        \item{\code{"opc"}:} { optimized principal component selection based
+#'        on Ramirez-Lopez et al. (2013a, 2013b). The optimal number of
+#'        components (of set of observations) is the one for which its distance
+#'        matrix minimizes the differences between the \code{Yr} value of each
+#'        observation and the \code{Yr} value of its closest observation. In
+#'        this case \code{value} must be a value (larger than 0 and
+#'        below the minimum dimension of \code{Xr} or \code{Xr} and \code{Xu}
+#'        combined) indicating the maximum
+#'        number of principal components to be tested. See the
+#'        \code{\link{ortho_projection}} function for more details.}
+#'
+#'        \item{\code{"cumvar"}:}{ selection of the principal components based
+#'        on a given cumulative amount of explained variance. In this case,
+#'        \code{value} must be a value (larger than 0 and below or equal to 1)
+#'        indicating the minimum amount of cumulative variance that the
+#'        combination of retained components should explain.}
+#'
+#'        \item{\code{"var"}:}{ selection of the principal components based
+#'        on a given amount of explained variance. In this case,
+#'        \code{value} must be a value (larger than 0 and below or equal to 1)
+#'        indicating the minimum amount of variance that a single component
+#'        should explain in order to be retained.}
+#'
+#'        \item{\code{"manual"}:}{ for manually specifying a fix number of
+#'        principal components. In this case, \code{value} must be a value
+#'        (larger than 0 and below the minimum dimension of \code{Xr} or
+#'        \code{Xr} and \code{Xu} combined).
+#'        indicating the minimum amount of variance that a component should
+#'        explain in order to be retained.}
+#'        }
+#' The list
+#' \code{list(method = "opc", value = min(dim(Xr), 40))} is the default.
+#' Optionally, the \code{pc_selection} argument admits \code{"opc"} or
+#' \code{"cumvar"} or \code{"var"} or \code{"manual"} as a single character
+#' string. In such a case the default \code{"value"} when either \code{"opc"} or
+#' \code{"manual"} are used is 40. When \code{"cumvar"} is used the default
+#' \code{"value"} is set to 0.99 and when \code{"var"} is used, the default
+#' \code{"value"} is set to 0.01.
+#' @param group an optional factor (or character vector vector
+#' that can be coerced to \code{\link[base]{factor}} by \code{as.factor}) that
+#' assigns a group/class label to each observation in \code{Xr}
+#' (e.g. groups can be given by spectra collected from the same batch of
+#' measurements, from the same observation, from observations with very similar
+#' origin, etc). This is taken into account for internal leave-group-out cross
+#' validation for pls tuning (factor optimization) to avoid pseudo-replication.
+#' When one observation is selected for cross-validation, all observations of
+#' the same group are removed together and assigned to validation. The length
+#' of the vector must be equal to the number of observations in the
+#' reference/training set (i.e. \code{nrow(Xr)}). See details.
+#' @param center a logical if the predictor variables must be centred at each
+#' local segment (before regression). In addition, if \code{TRUE}, \code{Xr}
+#' and \code{Xu} will be centred for  dissimilarity computations.
+#' @param scale a logical indicating if the predictor variables must be scaled
+#' to unit variance at each local segment (before regression). In addition, if
+#' \code{TRUE}, \code{Xr} and \code{Xu} will be scaled for  dissimilarity
+#' computations.
+#' @param verbose a logical indicating whether or not to print a progress bar
+#' for each observation to be predicted. Default is \code{TRUE}. Note: In case
+#' parallel processing is used, these progress bars will not be printed.
+#' @param documentation an optional character string that can be used to
+#' describe anything related to the \code{mbl} call (e.g. description of the
+#' input data). Default: \code{character()}. NOTE: his is an experimental
+#' argument.
+#' @param ... further arguments to be passed to the \code{\link{dissimilarity}}
+#' function. See details.
+#'
+#' @details
+#' The argument \code{spike} can be used to indicate what reference observations
+#' in \code{Xr} must be kept in the neighborhood of every single \code{Xu}
+#' observation. If a vector of length \mjeqn{m}{m} is passed to this argument,
+#' this means that the \mjeqn{m}{m} original neighbors with the largest
+#' dissimilarities to the target observations will be forced out of the
+#' neighborhood. Spiking might be useful in cases where
+#' some reference observations are known to be somehow related to the ones in
+#' \code{Xu} and therefore might be relevant for fitting the local models. See
+#' Guerrero et al. (2010) for an example on the benefits of spiking.
+#'
+#' The \code{mbl} function uses the \code{\link{dissimilarity}} function to
+#' compute the dissimilarities between code{Xr} and \code{Xu}. The dissimilarity
+#' method to be used is specified in the \code{diss_method} argument.
+#' Arguments to \code{\link{dissimilarity}} as well as further arguments to the
+#' functions used inside \code{\link{dissimilarity}}
+#' (i.e. \code{\link{ortho_diss}} \code{\link{cor_diss}} \code{\link{f_diss}}
+#' \code{\link{sid}}) can be passed to those functions by using \code{...}.
+#'
+#' The \code{diss_usage} argument is used to specify whether the dissimilarity
+#' information must be used within the local regressions and, if so, how.
+#' When \code{diss_usage = "predictors"} the local (square symmetric)
+#' dissimilarity matrix corresponding the selected neighborhood is used as
+#' source of additional predictors (i.e the columns of this local matrix are
+#' treated as predictor variables). In some cases this results in an improvement
+#' of the prediction performance (Ramirez-Lopez et al., 2013a).
+#' If \code{diss_usage = "weights"}, the neighbors of the query point
+#' (\mjeqn{xu_{j}}{xu_j}) are weighted according to their dissimilarity to
+#' \mjeqn{xu_{j}}{xu_j} before carrying out each local regression. The following
+#' tricubic function (Cleveland and Delvin, 1988; Naes et al., 1990) is used for
+#' computing the final weights based on the measured dissimilarities:
+#'
+#' \mjdeqn{W_{j}  =  (1 - v^{3})^{3}}{W_j  =  (1 - v^3)^3}
+#'
+#' where if \mjeqn{{xr_{i} \in }}{xr_i in} neighbors of \mjeqn{xu_{j}}{xu_j}:
+#'
+#' \mjdeqn{v_{j}(xu_{j})  =  d(xr_{i}, xu_{j})}{v_j(xu_j)  =  d(xr_i, xu_j)}
+#'
+#' otherwise:
+#'
+#' \mjdeqn{v_{j}(xu_{j})  =  0}{v_j(xu_j)  =  0}
+#'
+#' In the above formulas \mjeqn{d(xr_{i}, xu_{j})}{d(xr_i, xu_j)} represents the
+#' dissimilarity between the query point and each object in \mjeqn{Xr}{Xr}.
+#' When \code{diss_usage = "none"} is chosen the dissimilarity information is
+#' not used.
+#'
+#' The global Mahalanobis distance (a.k.a GH) is computed based on the scores
+#' of a pls projection. A pls projection model is built with \code{Yr} and
+#' \code{Xr} and this models is used to obtain the pls scores of the \code{Xu}
+#' observations. The Mahalanobis distance between each \code{Xu} observation in
+#' (the pls space) and the centre of \code{Xr} is then computed. The number of
+#' pls components is optimized based on the parameters passed to the
+#' \code{pc_selection} argument. In addition, the \code{mbl} function also
+#' reports the GH distance for the observations in \code{Xr}.
+#'
+#' Some aspects of the mbl process, such as the type of internal validation,
+#' parameter tuning, what extra objects to return, permission for parallel
+#' execution, prediction limits, etc, can be specified by using the
+#' \code{\link{mbl_control}} function.
+#'
+#' By using the \code{group} argument one can specify groups of observations
+#' that have something in common (e.g. observations with very similar origin).
+#' The purpose of \code{group} is to avoid biased cross-validation results due
+#' to pseudo-replication. This argument allows to select calibration points
+#' that are independent from the validation ones. In this regard, when
+#' \code{validation_type = "local_cv"} (used in \code{\link{mbl_control}}
+#' function), then the \code{p} argument refers to the percentage of groups of
+#' observations (rather than single observations) to be retained in each
+#' sampling iteration at each local segment.
+#'
+#' @return a \code{list} of class \code{mbl} with the following components
+#' (sorted either by \code{k} or \code{k_diss}):
+#'
+#' \itemize{
+#'  \item{\code{call}:}{ the call to mbl.}
+#'  \item{\code{cntrl_param}:}{ the list with the control parameters passed to
+#'  control.}
+#'  \item{\code{Xu_neighbors}:}{ a list containing two elements: a matrix of
+#'  \code{Xr} indices corresponding to the neighbors of \code{Xu} and a matrix
+#'  of dissimilarities between each \code{Xu} observation and its corresponding
+#'  neighbor in \code{Xr}.}
+#'  \item{\code{dissimilarities}:}{ a list with the method used to obtain the
+#'  dissimilarity matrices and the dissimilarity matrix corresponding to
+#'  \mjeqn{D(Xr, Xu)}{D(Xr, Xu)}. This object is returned only if the
+#'  \code{return_dissimilarity} argument in the \code{control} list was set
+#'  to \code{TRUE}.}
+#'  \item{\code{n_predictions}}{ the total number of observations predicted.}
+#'  \item{\code{gh}:}{ if \code{gh = TRUE}, a list containing the global
+#'  Mahalanobis distance values for the observations in \code{Xr} and \code{Xu}
+#'  as well as the results of the global pls projection object used to obtain
+#'  the GH values.}
+#'  \item{\code{validation_results}:}{ a list of validation results for
+#'  "local cross validation" (returned if the \code{validation_type} in
+#'  \code{control} list was set to \code{"local_cv"}),
+#'  "nearest neighbor validation" (returned if the \code{validation_type}
+#'  in \code{control} list was set to \code{"NNv"}) and
+#'  "Yu prediction statistics" (returned  if \code{Yu} was supplied).}``
+#'  \item{\code{results}:}{ a list of data tables containing the results of the
+#'  predictions for each either \code{k} or \code{k_diss}. Each data table
+#'  contains the following columns:}
 #'  \itemize{
-#'  \item{\code{o.index}:}{ The index of the sample predicted in the input \code{matrix}}
-#'  \item{\code{k.diss}:}{ This column is only ouput if the \code{k.diss} argument is used. It indicates the corresponding dissimilarity threshold for selecting the neighbors used to predict a given sample.}
-#'  \item{\code{distance}:}{ This column is only ouput if the \code{k.diss} argument is used. It is a logical that indicates whether the neighbors selected by the given dissimilarity threshold were outside the boundaries specified in the \code{k.range} argument. In that case the number of neighbors used is coerced to on of the boundaries.}
-#'  \item{\code{k.org}:}{ This column is only ouput if the \code{k.diss} argument is used. It indicates the number of neighbors that are retained when the given dissimilarity threshold is used.}
-#'  \item{\code{pls.comp}:}{ This column is only ouput if \code{pls} regression was used. It indicates the final number of pls components used. If no optimization was set, it retrieves the original pls components specified in the \code{pls.c} argument.}
-#'  \item{\code{min.pls}:}{ This column is only ouput if \code{wapls1} regression was used. It indicates the final number of minimum pls components used. If no optimization was set, it retrieves the original minimum pls components specified in the \code{pls.c} argument.}
-#'  \item{\code{max.pls}:}{ This column is only ouput if \code{wapls1} regression was used. It indicates the final number of maximum pls components used. If no optimization was set, it retrieves the original maximum pls components specified in the \code{pls.c} argument.}
-#'  \item{\code{yu.obs}:}{ This column is only ouput if the \code{Yu} argument is used. It indicates the input values given in \code{Yu} (the response variable corresponding to the data to be predicted).}     
-#'  \item{\code{pred}:}{ The predicted values}     
-#'  \item{\code{yr.min.obs}:}{ The minimum reference value (of the response variable) in the neighborhood.}
-#'  \item{\code{yr.max.obs}:}{ The maximum reference value (of the response variable) in the neighborhood.}
-#'  \item{\code{index.nearest.in.ref}}{ The index in \code{Xr} of the nearest neighbor.}
-#'  \item{\code{y.nearest}:}{ The reference value (of the response variable) of the nearest neighbor in \code{Xr}.}
-#'  \item{\code{y.nearest.pred}:}{ This column is only ouput if the validation method (selected with the \code{\link{mblControl}} function) is equal to \code{'NNv'}. It represents the predicted value of the nearest neighbor sample in \code{Xr} using the neighborhood of the predicted sample in \code{Xu}.}
-#'  \item{\code{loc.rmse.cv}:}{ This column is only ouput if the validation method (selected with the \code{\link{mblControl}} function) is equal to \code{'loc_crossval'}. It represents the cross validation RMSE value computed in for the neighborhood of the sample of the predicted sample in \code{Xu}.}
-#'  \item{\code{loc.st.rmse.cv}:}{ This column is only ouput if the validation method (selected with the \code{\link{mblControl}} function) is equal to \code{'loc_crossval'}. It represents the cross validation standardized RMSE value computed in for the neighborhood of the sample of the predicted sample in \code{Xu}.}
-#'  \item{\code{dist.nearest}:}{ The distance to the nearest neighbor.}
-#'  \item{\code{dist.k.farthest}:}{ The distance to the farthest neighbor selected.}
+#'    \item{\code{o_index}:}{ The index of the predicted observation.}
+#'    \item{\code{k_diss}:}{ This column is only output if the \code{k_diss}
+#'    argument is used. It indicates the corresponding dissimilarity threshold
+#'    for selecting the neighbors.}
+#'    \item{\code{k_original}:}{ This column is only output if the \code{k_diss}
+#'    argument is used. It indicates the number of neighbors that were originally
+#'    found when the given dissimilarity threshold is used.}
+#'    \item{\code{k}:}{ This column indicates the final number of neighbors
+#'    used.}
+#'    \item{\code{npls}:}{ This column is only output if the \code{pls}
+#'    regression method was used. It indicates the final number of pls
+#'    components used.}
+#'    \item{\code{min_pls}:}{ This column is only output if \code{wapls}
+#'    regression method was used. It indicates the final number of minimum pls
+#'    components used. If no optimization was set, it retrieves the original
+#'    minimum pls components passed to the \code{method} argument.}
+#'    \item{\code{max_pls}:}{ This column is only output if the \code{wapls}
+#'    regression method was used. It indicates the final number of maximum pls
+#'    components used. If no optimization was set, it retrieves the original
+#'    maximum pls components passed to the \code{method} argument.}
+#'    \item{\code{yu_obs}:}{ The input values given in \code{Yu} (the response
+#'    variable corresponding to the data to be predicted). If \code{Yu = NULL},
+#'    then \code{NA}s are retrieved.}
+#'    \item{\code{pred}:}{ The predicted Yu values.}
+#'    \item{\code{yr_min_obs}:}{ The minimum reference value (of the response
+#'    variable) in the neighborhood.}
+#'    \item{\code{yr_max_obs}:}{ The maximum reference value (of the response
+#'    variable) in the neighborhood.}
+#'    \item{\code{index_nearest_in_Xr}}{ The index of the nearest neighbor found
+#'    in \code{Xr}.}
+#'    \item{\code{index_farthest_in_Xr}}{ The index of the farthest neighbor
+#'    found in \code{Xr}.}
+#'    \item{\code{y_nearest}:}{ The reference value (\code{Yr}) corresponding to
+#'    the nearest neighbor found in \code{Xr}.}
+#'    \item{\code{y_nearest_pred}:}{ This column is only output if the
+#'    validation method in the object passed to \code{control} was set to
+#'    \code{"NNv"}. It represents the predicted value of the nearest neighbor
+#'    observation found in \code{Xr}. This prediction come from model fitted
+#'    with the remaining observations in the neighborhood of the target
+#'    observation in \code{Xu}.}
+#'    \item{\code{loc_rmse_cv}:}{ This column is only output if the validation
+#'    method in the object passed to \code{control} was set to
+#'    \code{'local_cv'}. It represents the RMSE of the cross-validation
+#'    computed for the neighborhood of the target observation in \code{Xu}.}
+#'    \item{\code{loc_st_rmse_cv}:}{ This column is only output if the
+#'    validation method in the object passed to \code{control} was set to
+#'    \code{'local_cv'}. It represents the standardized RMSE of the
+#'    cross-validation computed for the neighborhood of the target observation
+#'    in \code{Xu}.}
+#'    \item{\code{dist_nearest}:}{ The distance to the nearest neighbor.}
+#'    \item{\code{dist_farthest}:}{ The distance to the farthest neighbor.}
+#'    \item{\code{loc_n_components}:}{ This column is only output if the
+#'    dissimilarity method used is one of \code{"pca"}, \code{"pca.nipals"} or
+#'    \code{"pls"} and in addition the dissimilarities are requested to be
+#'    computed locally by passing \code{.local = TRUE} to the \code{mbl}
+#'    function.
+#'    See \code{.local} argument in the \code{\link{ortho_diss}} function.}
+#'    }
+#'  \item{\code{documentation}}{ A character string with the documentation
+#'  added.}
 #'  }
-#'  }
-#' When the \code{k.diss} argument is used, the printed results show a table with a column named 'p.bounded'. It represents the percentage of samples
-#' for which the neighbors selected by the given dissimilarity threshold were outside the boundaries specified in the \code{k.range} argument.   
-#' @author Leonardo Ramirez-Lopez and Antoine Stevens
-#' @references 
-#' Cleveland, W. S., and Devlin, S. J. 1988. Locally weighted regression: an approach to regression analysis by local fitting. Journal of the American Statistical Association, 83, 596-610.
-#' 
-#' Fernandez Pierna, J.A., Dardenne, P. 2008. Soil parameter quantification by NIRS as a Chemometric challenge at "Chimiomitrie 2006". Chemometrics and Intelligent Laboratory Systems 91, 94-98
-#' 
-#' Naes, T., Isaksson, T., Kowalski, B. 1990. Locally weighted regression and scatter correction for near-infrared reflectance data. Analytical Chemistry 62, 664-673.  
-#' 
-#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematte, J.A.M., Scholten, T. 2013a. The spectrum-based learner: A new local approach for modeling soil vis-NIR spectra of complex datasets. Geoderma 195-196, 268-279.
-#' 
-#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Viscarra Rossel, R., Dematte, J. A. M.,  Scholten, T. 2013b. Distance and similarity-search metrics for use with soil vis-NIR spectra. Geoderma 199, 43-53.
+#' When the \code{k_diss} argument is used, the printed results show a table
+#' with a column named '\code{p_bounded}. It represents the percentage of
+#' observations for which the neighbors selected by the given dissimilarity
+#' threshold were outside the boundaries specified in the \code{k_range}
+#' argument.
+#' @author \href{https://orcid.org/0000-0002-5369-5120}{Leonardo Ramirez-Lopez}
+#' and Antoine Stevens
+#' @references
+#' Cleveland, W. S., and Devlin, S. J. 1988. Locally weighted regression: an
+#' approach to regression analysis by local fitting. Journal of the American
+#' Statistical Association, 83, 596-610.
 #'
-#' Rasmussen, C.E., Williams, C.K. Gaussian Processes for Machine Learning. Massachusetts Institute of Technology: MIT-Press, 2006.
-#'   
-#' Shenk, J., Westerhaus, M., and Berzaghi, P. 1997. Investigation of a LOCAL calibration procedure for near infrared instruments. Journal of Near Infrared Spectroscopy, 5, 223-232.
-#' 
-#' @seealso \code{\link{mblControl}}, \code{\link{fDiss}}, \code{\link{corDiss}}, \code{\link{sid}}, \code{\link{orthoDiss}}, \code{\link{neigCleaning}}
+#' Guerrero, C., Zornoza, R., Gómez, I., Mataix-Beneyto, J. 2010. Spiking of
+#' NIR regional models using observations from target sites: Effect of model
+#' size on prediction accuracy. Geoderma, 158(1-2), 66-77.
+#'
+#' Naes, T., Isaksson, T., Kowalski, B. 1990. Locally weighted regression and
+#' scatter correction for near-infrared reflectance data. Analytical Chemistry
+#' 62, 664-673.
+#'
+#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematte, J.A.M.,
+#' Scholten, T. 2013a. The spectrum-based learner: A new local approach for
+#' modeling soil vis-NIR spectra of complex data sets. Geoderma 195-196,
+#' 268-279.
+#'
+#' Ramirez-Lopez, L., Behrens, T., Schmidt, K., Viscarra Rossel, R., Dematte,
+#' J. A. M.,  Scholten, T. 2013b. Distance and similarity-search metrics for
+#' use with soil vis-NIR spectra. Geoderma 199, 43-53.
+#'
+#' Rasmussen, C.E., Williams, C.K. Gaussian Processes for Machine Learning.
+#' Massachusetts Institute of Technology: MIT-Press, 2006.
+#'
+#' Shenk, J., Westerhaus, M., and Berzaghi, P. 1997. Investigation of a LOCAL
+#' calibration procedure for near infrared instruments. Journal of Near
+#' Infrared Spectroscopy, 5, 223-232.
+#'
+#' @seealso \code{\link{mbl_control}}, \code{\link{f_diss}},
+#' \code{\link{cor_diss}}, \code{\link{sid}}, \code{\link{ortho_diss}},
+#' \code{\link{search_neighbors}}
 #' @examples
-#' \dontrun{
-#' require(prospectr)
-#' 
+#' \donttest{
+#' library(prospectr)
 #' data(NIRsoil)
-#' 
-#' # Filter the data using the Savitzky and Golay smoothing filter with 
-#' # a window size of 11 spectral variables and a polynomial order of 3 
-#' # (no differentiation).
-#' sg <- savitzkyGolay(NIRsoil$spc, p = 3, w = 11, m = 0) 
 #'
-#' # Replace the original spectra with the filtered ones
-#' NIRsoil$spc <- sg
-#' 
-#' Xu <- NIRsoil$spc[!as.logical(NIRsoil$train),]
-#' Yu <- NIRsoil$CEC[!as.logical(NIRsoil$train)]
-#' 
-#' Yr <- NIRsoil$CEC[as.logical(NIRsoil$train)]
-#' Xr <- NIRsoil$spc[as.logical(NIRsoil$train),]
-#' 
-#' Xu <- Xu[!is.na(Yu),]
-#' Xr <- Xr[!is.na(Yr),]
-#' 
-#' Yu <- Yu[!is.na(Yu)]
-#' Yr <- Yr[!is.na(Yr)]
-#' 
+#' # Proprocess the data using detrend plus first derivative with Savitzky and
+#' # Golay smoothing filter
+#' sg_det <- savitzkyGolay(
+#'   detrend(NIRsoil$spc,
+#'     wav = as.numeric(colnames(NIRsoil$spc))
+#'   ),
+#'   m = 1,
+#'   p = 1,
+#'   w = 7
+#' )
+#'
+#' NIRsoil$spc_pr <- sg_det
+#'
+#' # split into training and testing sets
+#' test_x <- NIRsoil$spc_pr[NIRsoil$train == 0 & !is.na(NIRsoil$CEC), ]
+#' test_y <- NIRsoil$CEC[NIRsoil$train == 0 & !is.na(NIRsoil$CEC)]
+#'
+#' train_y <- NIRsoil$CEC[NIRsoil$train == 1 & !is.na(NIRsoil$CEC)]
+#' train_x <- NIRsoil$spc_pr[NIRsoil$train == 1 & !is.na(NIRsoil$CEC), ]
+#'
 #' # Example 1
-#' # A mbl implemented in Ramirez-Lopez et al. (2013, 
+#' # A mbl implemented in Ramirez-Lopez et al. (2013,
 #' # the spectrum-based learner)
 #' # Example 1.1
-#' # An exmaple where Yu is supposed to be unknown, but the Xu 
-#' # (spectral variables) are known 
-#' ctrl1 <- mblControl(sm = "pc", pcSelection = list("opc", 40), 
-#'                     valMethod = "NNv", 
-#'                     scaled = FALSE, center = TRUE)
-#' 
-#' sbl.u <- mbl(Yr = Yr, Xr = Xr, Yu = NULL, Xu = Xu,
-#'              mblCtrl = ctrl1, 
-#'              dissUsage = "predictors", 
-#'              k = seq(40, 150, by = 10), 
-#'              method = "gpr")
-#' sbl.u
-#' plot(sbl.u)
-#' 
-#' 
-#'  
-#' # Example 1.2
-#' # If Yu is actually known... 
-#' sbl.u2 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'               mblCtrl = ctrl1, 
-#'               dissUsage = "predictors", 
-#'               k = seq(40, 150, by = 10), 
-#'               method = "gpr")
-#' sbl.u2
+#' # An exmaple where Yu is supposed to be unknown, but the Xu
+#' # (spectral variables) are known
+#' my_control <- mbl_control(validation_type = "NNv")
 #'
-#' # Example 1.3
-#' # A variation of the spectrum-based learner implemented in 
-#' # Ramirez-Lopez et al. (2013) where the dissimilarity matrices are 
-#' # recomputed based on partial least squares scores
-#' ctrl_1.3 <- mblControl(sm = "pls", pcSelection = list("opc", 40), 
-#'                        valMethod = "NNv", 
-#'                        scaled = FALSE, center = TRUE)
-#'                           
-#' sbl_1.3 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                mblCtrl = ctrl_1.3,
-#'                dissUsage = "predictors",
-#'                k = seq(40, 150, by = 10), 
-#'                method = "gpr")
-#' sbl_1.3
-#' 
+#' ## The neighborhood sizes to test
+#' ks <- seq(40, 140, by = 20)
+#'
+#' sbl <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   k = ks,
+#'   method = local_fit_gpr(),
+#'   control = my_control,
+#'   scale = TRUE
+#' )
+#' sbl
+#' plot(sbl)
+#' get_predictions(sbl)
+#'
+#' # Example 1.2
+#' # If Yu is actually known...
+#' sbl_2 <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   Yu = test_y,
+#'   k = ks,
+#'   method = local_fit_gpr(),
+#'   control = my_control
+#' )
+#' sbl_2
+#' plot(sbl_2)
+#'
 #' # Example 2
-#' # A mbl similar to the ones implemented in 
-#' # Ramirez-Lopez et al. (2013) 
-#' # and Fernandez Pierna and Dardenne (2008)
-#' ctrl.mbl <- mblControl(sm = "cor", 
-#'                        pcSelection = list("cumvar", 0.999), 
-#'                        valMethod = "NNv", 
-#'                        scaled = FALSE, center = TRUE)
-#'                           
-#' local.mbl <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                  mblCtrl = ctrl.mbl,
-#'                  dissUsage = "none",
-#'                  k = seq(40, 150, by = 10), 
-#'                  pls.c = c(5, 15),
-#'                  method = "wapls1")
-#' local.mbl
+#' # the LOCAL algorithm (Shenk et al., 1997)
+#' local_algorithm <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   Yu = test_y,
+#'   k = ks,
+#'   method = local_fit_wapls(min_pls_c = 3, max_pls_c = 15),
+#'   diss_method = "cor",
+#'   diss_usage = "none",
+#'   control = my_control
+#' )
+#' local_algorithm
+#' plot(local_algorithm)
 #'
 #' # Example 3
-#' # A variation of the previous example (using the optimized pc 
-#' # dissmilarity matrix) using the control list of the example 1
-#'                          
-#' local.mbl2 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                   mblCtrl = ctrl1,
-#'                   dissUsage = "none",
-#'                   k = seq(40, 150, by = 10), 
-#'                   pls.c = c(5, 15),
-#'                   method = "wapls1")
-#' local.mbl2
-#' 
+#' # A variation of the LOCAL algorithm (using the optimized pc
+#' # dissmilarity matrix) and dissimilarity matrix as source of
+#' # additional preditors
+#' local_algorithm_2 <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   Yu = test_y,
+#'   k = ks,
+#'   method = local_fit_wapls(min_pls_c = 3, max_pls_c = 15),
+#'   diss_method = "pca",
+#'   diss_usage = "predictors",
+#'   control = my_control
+#' )
+#' local_algorithm_2
+#' plot(local_algorithm_2)
+#'
 #' # Example 4
-#' # Using the function with user-defined dissimilarities:
-#' # Examples 4.1 - 4.2: Compute a square symetric matrix of 
-#' # dissimilarities between 
-#' # all the elements in Xr and Xu (dissimilarities will be used as 
-#' # additional predictor variables later in the mbl function)
+#' # Running the mbl function in parallel with example 2
 #' 
-#' # Examples 4.3 - 4.4: Derive a dissimilarity value of each element 
-#' # in Xu to each element in Xr (in this case dissimilarities will 
-#' # not be used as additional predictor variables later in the 
-#' # mbl function)
+#' n_cores <- 2
 #' 
-#' # Example 4.1
-#' # the manhattan distance 
-#' manhattanD <- dist(rbind(Xr, Xu), method = "manhattan") 
-#' manhattanD <- as.matrix(manhattanD)
-#'
-#' ctrl.udd <- mblControl(sm = "none", 
-#'                        pcSelection = list("cumvar", 0.999), 
-#'                        valMethod = c("NNv", "loc_crossval"), 
-#'                        resampling = 10, p = 0.75,
-#'                        scaled = FALSE, center = TRUE)
-#'
-#' mbl.udd1 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                 mblCtrl = ctrl.udd, 
-#'                 dissimilarityM = manhattanD,
-#'                 dissUsage = "predictors",
-#'                 k = seq(40, 150, by = 10), 
-#'                 method = "gpr")
-#' mbl.udd1
-#' 
-#' #Example 4.2
-#' # first derivative spectra
-#' Xr.der.sp <- t(diff(t(rbind(Xr, Xu)), lag = 7, differences = 1)) 
-#' Xu.der.sp <- t(diff(t(Xu), lag = 7, differences = 1)) 
-#' 
-#' # The principal components dissimilarity on the derivative spectra 
-#' der.ortho <- orthoDiss(Xr = Xr.der.sp, X2 = Xu.der.sp,
-#'                        Yr = Yr,
-#'                        pcSelection = list("opc", 40),
-#'                        method = "pls",
-#'                        center = FALSE, scale = FALSE) 
-#' 
-#' der.ortho.diss <- der.ortho$dissimilarity
-#' 
-#' # mbl applied to the absorbance spectra
-#' mbl.udd2 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                 mblCtrl = ctrl.udd, 
-#'                 dissimilarityM = der.ortho.diss,
-#'                 dissUsage = "none",
-#'                 k = seq(40, 150, by = 10), 
-#'                 method = "gpr")
-#'                                 
-#' #Example 4.3
-#' # first derivative spectra
-#' der.Xr <- t(diff(t(Xr), lag = 1, differences = 1)) 
-#' der.Xu <- t(diff(t(Xu), lag = 1, differences = 1))
-#' # the sid on the derivative spectra
-#' der.sid <- sid(Xr = der.Xr, X2 = der.Xu, mode = "density", 
-#'                center = TRUE, scaled = FALSE) 
-#' der.sid <- der.sid$sid
-#' 
-#' mbl.udd3 <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'                 mblCtrl = ctrl.udd, 
-#'                 dissimilarityM = der.sid,
-#'                 dissUsage = "none",
-#'                 k = seq(40, 150, by = 10), 
-#'                 method = "gpr")
-#' mbl.udd3
-#' 
-#' # Example 5
-#' # For running the mbl function in parallel
-#' n.cores <- detectCores() - 1
-#' if(n.cores == 0) n.cores <- 1
-#' 
-#' # Set the number of cores according to the OS
-#' if (.Platform$OS.type == "windows") {
-#'   require(doParallel)
-#'   clust <- makeCluster(n.cores)   
-#'   registerDoParallel(clust)
-#' }else{
-#'   require(doSNOW)
-#'   clust <- makeCluster(n.cores, type = "SOCK")
-#'   registerDoSNOW(clust)
-#'   ncores <- getDoParWorkers()
+#' if (parallel::detectCores() < 2) {
+#'    n_cores <- 1
 #' }
 #' 
-#' ctrl <- mblControl(sm = "pc", pcSelection = list("opc", 40), 
-#'                    valMethod = "NNv",
-#'                    scaled = FALSE, center = TRUE)
+#' # Alternatively:
+#' # n_cores <- parallel::detectCores() - 1
+#' # if (n_cores == 0) {
+#' #  n_cores <- 1
+#' # }
 #'
-#' mbl.p <- mbl(Yr = Yr, Xr = Xr, Yu = Yu, Xu = Xu,
-#'              mblCtrl = ctrl, 
-#'              dissUsage = "none",
-#'              k = seq(40, 150, by = 10), 
-#'              method = "gpr")
+#' library(doParallel)
+#' clust <- makeCluster(n_cores)
+#' registerDoParallel(clust)
+#'
+#' # Alernatively:
+#' # library(doSNOW)
+#' # clust <- makeCluster(n_cores, type = "SOCK")
+#' # registerDoSNOW(clust)
+#' # getDoParWorkers()
+#'
+#' local_algorithm_par <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   Yu = test_y,
+#'   k = ks,
+#'   method = local_fit_wapls(min_pls_c = 3, max_pls_c = 15),
+#'   diss_method = "cor",
+#'   diss_usage = "none",
+#'   control = my_control
+#' )
+#' local_algorithm_par
+#'
 #' registerDoSEQ()
 #' try(stopCluster(clust))
-#' mbl.p
+#'
+#' # Example 5
+#' # Using local pls distances
+#' with_local_diss <- mbl(
+#'   Xr = train_x,
+#'   Yr = train_y,
+#'   Xu = test_x,
+#'   Yu = test_y,
+#'   k = ks,
+#'   method = local_fit_wapls(min_pls_c = 3, max_pls_c = 15),
+#'   diss_method = "pls",
+#'   diss_usage = "predictors",
+#'   control = my_control,
+#'   .local = TRUE,
+#'   pre_k = 150,
+#' )
+#' with_local_diss
+#' plot(with_local_diss)
 #' }
 #' @export
 
 ######################################################################
 # resemble
-# Copyrigth (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
+# Copyright (C) 2014 Leonardo Ramirez-Lopez and Antoine Stevens
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -345,1431 +565,920 @@
 
 ## History:
 ## 09.03.2014 Leo     Doc examples  were formated with a max. line width
-## 13.03.2014 Antoine The explanation of the cores argument was modified   
-## 23.04.2014 Leo     Added default variable names when they are missing 
+## 13.03.2014 Antoine The explanation of the cores argument was modified
+## 23.04.2014 Leo     Added default variable names when they are missing
 ## 08.09.2014 Leo     A bug related with the computations of the weights
 ##                    for wapls2 was fixed
-## 23.09.2014 Leo     A bug that prevented the mbl function of using 
+## 23.09.2014 Leo     A bug that prevented the mbl function of using
 ##                    the 'dissimilarityM' argument was fixed
-## 03.10.2014 Antoine Fix bug when scale = T and add allowParallel argument
-## 12.10.2014 Leo     noise.v was missing in the locFit function used for 
+## 03.10.2014 Antoine Fix bug when scale = T and add allow_parallel argument
+## 12.10.2014 Leo     noise_variance was missing in the locFit function used for
 ##                    the nearest neighbor validation
-## 16.11.2015 Leo     Now the scale argument for gaussian process is a 
-##                    indicates that both x and y variables must be scaled 
-##                    to zero mean and unit variance. Before it only the x 
+## 16.11.2015 Leo     Now the scale argument for gaussian process is a
+##                    indicates that both x and y variables must be scaled
+##                    to zero mean and unit variance. Before it only the x
 ##                    variables were scaled to unit variance
-## 18.11.2015 Leo     The mbl examples were corrected (unnecessary arguments 
+## 18.11.2015 Leo     The mbl examples were corrected (unnecessary arguments
 ##                    were deleted)
 ## 01.12.2015 Leo     The wapls2 was removed from the options of methods
 ## 10.12.2015 Leo     The locFit function has been renamed to locFitnpred
 ##                    and now it always performs a prediction.
-## 10.12.2015 Leo     Several redundant/repaeated sanity checks (ocurring 
+## 10.12.2015 Leo     Several redundant/repaeated sanity checks (ocurring
 ##                    when combining functions) were deactivated. This does not
-##                    impact the finaly sanity checks of the overall mbl fucntion.
-## 11.12.2015 Leo     A bug when the k.diss argument was used was corrected. 
-##                    The results about the percentage of samples that were bounded 
-##                    by k.range was not not correct.  
-## 11.12.2015 Leo     The explanation of the output variables in the results element of 
-##                    the mbl objects was extended. The rep variable is not output anymore
-##                    in the results element.
-## 03.01.2016 Leo     Now it is possible to optimize the max and min pls components of wapls1 
-## 04.02.2016 Leo     An extrange bug was fixed. The object predobs (in the parallel loop) had a
-##                    variable named pls.c (predobs$pls.c). When when method = "gpr" was used, 
-##                    and mbl was runing in parallel it retrieved and error saying that pls.c was missing!!!
-##                    This was perhaps due to the fact that the pls.c  was variable (in predobs) and an argument.
-## 16.02.2016 Leo     Bug fixed. It caused the mbl functio to return an error (sometimes) when the group argument was used together 
-##                    with local cross validation. The errors ocurred when groups containing very few samples (e.g. 1 or 2) were used.
-                   
-mbl <- function(Yr, Xr, Yu = NULL, Xu,
-                mblCtrl = mblControl(),
-                dissimilarityM,
+##                    impact the finaly sanity checks of the overall mbl
+##                    function.
+## 11.12.2015 Leo     A bug when the k_diss argument was used was corrected.
+##                    The results about the percentage of observations that were
+##                    bounded by k_range was not not correct.
+## 11.12.2015 Leo     The explanation of the output variables in the results
+##                    element of the mbl objects was extended. The rep variable
+##                    is not output anymore in the results element.
+## 03.01.2016 Leo     Now it is possible to optimize the max and min pls
+##                    components of wapls1
+## 04.02.2016 Leo     An extrange bug was fixed. The object pred_obs
+##                    (in the parallel loop) had a variable named pls_c
+##                    (pred_obs$pls_c). When when method = "gpr" was used,
+##                    and mbl was runing in parallel it retrieved and error
+##                    saying that pls_c was missing!!! This was perhaps due to
+##                    the fact that the pls_c  was variable (in pred_obs) and
+##                    an argument.
+## 16.02.2016 Leo     Bug fixed. It caused the mbl function to return an error
+##                    (sometimes) when the group argument was used together
+##                    with local cross-validation. The errors occurred when
+##                    groups containing very few observations (e.g. 1 or 2) were used.
+## 09.03.2018 Leo     A new output (XuneighborList) has been added. It was
+##                    requested by Eva Ampe and Miriam de Winter.
+## 16.05.2018 Leo     A parameter called documentation has been added.
+## 21.06.2020 Leo     - pls.max.iter, pls.tol and noise.v were moved to mbl from
+##                      mbl_control()
+##                    - Argument scaled (from mbl_control()) renamed to .scale
+##                      and moved to mbl
+##                    - new arguments: gh and spike
+##                    - order of the Yr, Xr, Yu and Xu arguments has changed to
+##                      Xr, Yr, Xu and Yu
+##                    - input type for the argument method has changed.
+##                      Previously it received a character string  indicating
+##                      the type of local regression (i.e. "pls",
+##                      "wapls1" or "gpr"). Now it receives an object of class
+##                      local_fit which is output by the new local_fit functions.
+##                    - dissimilarityM has been deprecated. It was used to pass
+##                      a dissimilarity matrix computed outside the mbl
+##                      function. This can be done now with the new argument
+##                      diss_method of mbl which was previously named "sm" and
+##                      it was in mbl_control()
+##                    - the warning message coming from the foreach loop about no
+##                      parallel backend registered is now avoided by checking
+##                      first if there is any parallel backend registered
+## 22.06.2020 Leo     - Updated examples
+
+## TODO:
+##  A bug was detected in  ortho_diss.
+## Use the following code to reproduce it
+# mfr <- read.nircal("C:/raml/polco/FranceMIlk.nir")
+#
+# mfr <- mfr[mfr$Protein < 17,]
+# mfr <- mfr[mfr$Protein >7,]
+# cdist <- ortho_diss(Xr = savitzkyGolay(standardNormalVariate(mfr$spc[,as.character(wavs[wavs<9000])]), m = 1, p = 1, w = 5),
+#                    X2 = savitzkyGolay(standardNormalVariate(colanta$spc[,as.character(wavs[wavs<9000])]), m = 1, p = 1, w = 5),
+#                    Yr = mfr$Moisture,
+#                    pc_selection = list("opc", 10),
+#                    method = "pca",
+#                    local = FALSE,
+#                    center = TRUE, scaled = FALSE,
+#                    compute_all = FALSE, cores = 1)
+## The error thrown is:
+## Error in svd(x = X0) : infinite or missing values in 'x'
+
+mbl <- function(Xr, Yr, Xu, Yu = NULL,
+                k, k_diss, k_range,
+                spike = NULL,
+                method = local_fit_wapls(
+                  min_pls_c = 3,
+                  max_pls_c = min(dim(Xr), 15)
+                ),
+                diss_method = "pca",
+                diss_usage = "predictors",
+                gh = TRUE,
+                pc_selection = list(
+                  method = "opc",
+                  value = min(dim(Xr), 40)
+                ),
+                control = mbl_control(),
                 group = NULL,
-                dissUsage = "predictors",
-                k, 
-                k.diss,
-                k.range,
-                method,
-                pls.c,
-                pls.max.iter = 1,
-                pls.tol = 1e-6,
-                noise.v = 0.001,                
-                ...){
+                center = TRUE,
+                scale = FALSE,
+                verbose = TRUE,
+                documentation = character(),
+                ...) {
+  f_call <- match.call()
+
+  "%mydo%" <- get("%do%")
+  if (control$allow_parallel & getDoParRegistered()) {
+    "%mydo%" <- get("%dopar%")
+  }
+  if (!is.logical(verbose)) {
+    stop("'verbose' must be logical")
+  }
   
-  '%mydo%' <- if (mblCtrl$allowParallel) get('%dopar%') else get('%do%')    
-  
-  ini.cntrl <- mblCtrl
-  
+  if (missing(k)) {
+    k <- NULL
+  }
+
+  if (missing(k_diss)) {
+    k_diss <- NULL
+  }
+
+  if (missing(k_range)) {
+    k_range <- NULL
+  }
+
+  input_dots <- list(...)
+  ini_cntrl <- control
+  ortho_diss_methods <- c("pca", "pca.nipals", "pls")
+
+  if (".local" %in% names(input_dots)) {
+    if (isTRUE(input_dots$.local)) {
+      if (!"pre_k" %in% names(input_dots)) {
+        stop("When '.local = TRUE', argument 'pre_k' needs to be provided. See ortho_diss documentation")
+      }
+      if (!is.null(k)) {
+        if (input_dots$pre_k < max(k)) {
+          stop("'k' cannot be larger than 'pre_k'")
+        }
+      }
+    }
+  }
+
   # Sanity checks
-  if(ncol(Xr) != ncol(Xu))
+  if (!is.logical(center)) {
+    stop("'center' argument must be logical")
+  }
+
+  if (!is.logical(scale)) {
+    stop("'scale' argument must be logical")
+  }
+
+  if (ncol(Xr) != ncol(Xu)) {
     stop("The number of predictor variables in Xr must be equal to the number of variables in Xu")
-  
-  if(ncol(Xr) < 4)
+  }
+
+  if (ncol(Xr) < 4) {
     stop("This function works only with matrices containing more than 3 predictor variables")
-  
-  if(length(Yr) != nrow(Xr))
+  }
+
+  if (length(Yr) != nrow(Xr)) {
     stop("length(Yr) must be equal to nrow(Xr)")
-  
-  if(any(is.na(Yr)))
+  }
+
+  if (any(is.na(Yr))) {
     stop("The current version of the mbl function does not handle NAs in the response variable of the reference observations (Yr)")
-  
+  }
+
   Xr <- as.matrix(Xr)
   Xu <- as.matrix(Xu)
   Yr <- as.matrix(Yr)
-  
+
+  n_xr <- nrow(Xr)
+  n_xu <- nrow(Xu)
+  n_total <- n_xr + n_xu
+
   rownames(Xr) <- 1:nrow(Xr)
   rownames(Xu) <- 1:nrow(Xu)
-  
-  if(is.null(colnames(Xr)))
+
+  if (is.null(colnames(Xr))) {
     colnames(Xr) <- 1:ncol(Xr)
-  
-  if(is.null(colnames(Xu)))
+  }
+
+  if (is.null(colnames(Xu))) {
     colnames(Xu) <- 1:ncol(Xu)
-  
-  if(sum(!colnames(Xu) ==  colnames(Xr)) != 0)
-    stop("The names of the variables in Xr do not match the names of the variables in Xu")
-  
-  if(mblCtrl$sm=="none" & missing(dissimilarityM))
-    stop("mblCtrl$sm is set to 'none' while 'dissimilarityM' is missing. Either similarity/disimilarity metric must be specified in mblCtrl$sm or a proper similarity/disimilarity matrix must be specified in the dissimilarityM argument")
-  
-  if(!missing(dissimilarityM)){
-    if(!is.matrix(dissimilarityM))
-      stop("'dissimilarityM' must be a matrix")
-    if(mblCtrl$sm != "none"){
-      warning(paste("Both 'dissimilarityM' and 'sm' ('mblCtrl$sm = ", mblCtrl$sm,"') were specified, only the 'dissimilarityM' argument will be taken into account and mblCtrl$sm will be set to 'none'", sep = ""))
-      mblCtrl$sm <- "none"
-    } 
-    if(dissUsage == "predictors")
-      if(sum(dim(dissimilarityM) - (nrow(Xr) + nrow(Xu))) != 0 & sum(diag(dissimilarityM) == 0) != 0)
-        stop("When dissUsage = 'predictors', 'dissimilarityM' must be a square symmetric matrix of dissimilarities (derived from rbind(Xr, Xu)) for which the diagonal values are zeros")
-    if(dissUsage %in% c("weights", "none"))
-      if(nrow(dissimilarityM) != nrow(Xr) & ncol(dissimilarityM) != nrow(Xu))
-        stop("When the 'dissUsage' argument is set to either 'weights' or 'none', 'dissimilarityM' must be a matrix representing the dissimilarity of each element in 'Xu' to each element in 'Xr'. The number of columns in 'dissimilarityM' must be equal to the number of rows of 'Xu' and the number of rows equal to the number of rows of 'Xr'")
-  } else{   
-    if(mblCtrl$sm == "movcor"){
-      if(mblCtrl$ws < 3 | mblCtrl$ws > (ncol(Xr) - 1) | length(mblCtrl$ws) != 1) 
-        mblCtrl$ws <- round(ncol(Xr) * 0.10)
-      if(!mblCtrl$ws %% 2){
-        mblCtrl$ws <- mblCtrl$ws - 1
-        warning(paste("In this case the ws specified in mblCtrl$ws must be an unique odd value between 3 and ", (ncol(Xr) - 1), ". Therefore the window size was reset to ", mblCtrl$ws,"."))
+  }
+
+  if (sum(!colnames(Xu) == colnames(Xr)) != 0) {
+    stop("Variable names in Xr do not match those in Xu")
+  }
+
+  diss_methods <- c(
+    "pca", "pca.nipals", "pls", "cor",
+    "euclid", "cosine", "sid"
+  )
+
+  if (!is.character(diss_method) & !is.matrix(diss_method)) {
+    mtds <- paste(diss_methods, collapse = ", ")
+    stop(paste0(
+      "'diss_method' must be one of: ",
+      mtds,
+      " or a matrix"
+    ))
+  }
+
+  if (!is.null(group)) {
+    if (length(group) != nrow(Xr)) {
+      stop(paste0(
+        "The length of 'group' must be equal to the number of ",
+        "observations in 'Xr'"
+      ))
+    }
+  }
+
+  if (length(pc_selection) != 2 | !is.list(pc_selection)) {
+    stop("'pc_selection' must be a list of length 2")
+  }
+
+  if (!all(names(pc_selection) %in% c("method", "value")) | is.null(names(pc_selection))) {
+    names(pc_selection)[sapply(pc_selection, FUN = is.character)] <- "method"
+    names(pc_selection)[sapply(pc_selection, FUN = is.numeric)] <- "value"
+  }
+
+  pc_sel_method <- match.arg(pc_selection$method, c(
+    "opc",
+    "var",
+    "cumvar",
+    "manual"
+  ))
+  pc_threshold <- pc_selection$value
+
+  if (pc_sel_method %in% c("opc", "manual") & pc_selection$value > min(n_total, ncol(Xr))) {
+    warning(paste0(
+      "When pc_selection$method is 'opc' or 'manual', the value ",
+      "specified in \npc_selection$value cannot be larger than ",
+      "min(nrow(Xr) + nrow(Xu), ncol(Xr)) \n(i.e ",
+      min(n_total, ncol(Xr)),
+      "). Therefore the value was reset to ",
+      min(n_total, ncol(Xr))
+    ))
+    pc_threshold <- min(n_total, ncol(Xr))
+  }
+
+
+  match.arg(diss_usage, c("predictors", "weights", "none"))
+
+  if (is.null(k) & is.null(k_diss)) {
+    stop("Either k or k_diss must be specified")
+  }
+
+  k_max <- NULL
+  if (!is.null(k)) {
+    if (!is.null(k_diss)) {
+      stop("Only one of k or k_diss can be specified")
+    }
+    if (!is.numeric(k)) {
+      stop("k must be a vector of integers")
+    } else {
+      k <- unique(sort(ceiling(k)))
+    }
+    k <- sort(k)
+    k_max <- max(k)
+  }
+
+  k_diss_max <- NULL
+  if (!is.null(k_diss)) {
+    k_diss <- unique(sort(k_diss))
+    if (is.null(k_range)) {
+      stop("If the k_diss argument is used, k_range must be specified")
+    }
+    if (length(k_range) != 2 | !is.numeric(k_range) | any(k_range < 1)) {
+      stop("k_range must be a vector of length 2 which specifies the minimum (first value, larger than 0) and the maximum (second value) number of neighbors")
+    }
+    k_range <- sort(k_range)
+    k_min_range <- as.integer(k_range[1])
+    k_max_range <- as.integer(k_range[2])
+    if (k_min_range < 4) {
+      stop("Minimum number of nearest neighbors allowed is 4")
+    }
+    if (k_max_range > nrow(Xr)) {
+      stop("Maximum number of nearest neighbors cannot exceed the number of reference observations")
+    }
+    k_diss_max <- max(k_diss)
+  }
+
+  if (".local" %in% names(input_dots)) {
+    if (isTRUE(input_dots$local)) {
+      if (!"pre_k" %in% names(input_dots)) {
+        stop(paste0(
+          "When .local = TRUE (passed to the ortho_diss method), the ",
+          "'pre_k' argument must be specified"
+        ))
+      }
+      if (input_dots$pre_k < k_max) {
+        stop(paste0(
+          "pre_k must be larger than ",
+          ifelse(is.null(k), "max(k_range)", "max(k)")
+        ))
       }
     }
   }
-  
-  if(!is.null(group))
-  {
-    if(length(group) != nrow(Xr))
-      stop("The length of 'group' must be equal to the number of observations in 'Xr'")
+
+  if (!"local_fit" %in% class(method)) {
+    stop("Object passed to method must be of class local_fit")
   }
-  
-  pcSel <- match.arg(mblCtrl$pcSelection[[1]], c("opc", "var", "cumvar", "manual"))
-  
-  trsh <- mblCtrl$pcSelection$value
-  
-  if(pcSel == "opc" & mblCtrl$pcSelection$value > min(nrow(Xr) + nrow(Xu), ncol(Xr))){
-    warning(paste("If 'mblCtrl$pcSelection$method = 'opc'' the value specified in 'mblCtrl$pcSelection$value' cannot be greater than  min(nrow(Xr) + nrow(Xu), ncol(Xr)) (i.e ", min(nrow(Xr) + nrow(Xu), ncol(Xr)),") in this case. Therefore the value was reset to ",min(nrow(Xr) + nrow(Xu), ncol(Xr)), sep=""))
-    trsh <- min(nrow(Xr) + nrow(Xr), ncol(Xr))
+
+  validation_type <- control$validation_type
+  is_local_cv <- "local_cv" %in% validation_type
+  is_nnv_val <- "NNv" %in% validation_type
+
+  if (all(c("local_cv", "NNv") %in% control$validation_type)) {
+    validation_type <- "both"
   }
-  
-  if(pcSel == "manual" & mblCtrl$pcSelection$value > min(nrow(Xr) + nrow(Xu), ncol(Xr))){
-    warning(paste("If 'mblCtrl$pcSelection$method = 'manual'' the value specified in 'mblCtrl$pcSelection$value' cannot be greater than  min(nrow(Xr) + nrow(Xu), ncol(Xr)) (i.e ", min(nrow(Xr) + nrow(Xu), ncol(Xr)),") in this case. Therefore the value was reset to ",min(nrow(Xr) + nrow(Xu), ncol(Xr)), sep=""))
-    trsh <- min(nrow(Xr) + nrow(Xr), ncol(Xr))
+
+  if (validation_type %in% c("NNv", "both") & nrow(Xu) < 3) {
+    stop(paste0(
+      "For nearest neighbor validation (control$validation_type == 'NNv')",
+      " Xu must contain at least 3 observations"
+    ))
   }
-  
-  match.arg(dissUsage, c("predictors", "weights", "none"))
-  
-  if(missing(k) & missing(k.diss)) 
-    stop("Either k or k.diss must be specified")
-  
-  if(!missing(k) & !missing(k.diss)) 
-    stop("Only one of k or k.diss can be specified")  
-  
-  if(mblCtrl$sm == "loc.pc")
-    if(!missing(k))
-      if(max(k) >= mblCtrl$k0)
-        stop(paste("The maximum number of neighbours specified in the k vector (", max(k) ,") cannot be greather than the initial number of neighbours specified in 'mblCtrl$k0' (",mblCtrl$k0,")", sep = ""))
-  
-  if(!missing(k.diss)){
-    dtc <- k.diss
-    if(missing(k.range))
-      stop("If the k.diss argument is used, k.range must be specified")
-    if(length(k.range) != 2 | !is.numeric(k.range) | diff(k.range) < 0)
-      stop("k.range must be a vector (of length 2) which specifies the minimum (first value) and the maximum (second value) number of neighbours") 
-    k.min <- as.integer(k.range[1])
-    k.max <- as.integer(k.range[2])
-    if(k.min < 10)
-      stop("Minimum number of nearest neighbours allowed is 10")
-    if(k.max > nrow(Xr))
-      stop("Maximum number of nearest neighbours cannot exceed the number of reference observations")
-    if(mblCtrl$sm == "loc.pc")
-      if(mblCtrl$k0 < max(k.range))
-        stop(paste("The parameter 'k0' specified in 'mblCtrl$k0' cannot be lower than the maximum specified in the 'k.range' argument (", k.max,")"))
-  }else
-    dtc <- NULL
-  
-  ## Remove this line for the package version following 1.2
-  if(method == "wapls2")
-    stop("The method 'wapls2' is deprecated. Since it is no longer supported, choose instead one of the following options: 'pls', 'wapls1', 'gpr'")
-  
-  match.arg(method, c("pls", "wapls1", "gpr"))
-  
-  if(method %in% c("pls", "wapls1")){
-    if(method %in% c("wapls1", "wapls2")){
-      if(missing(pls.c))
-        stop("When 'wapls1'is chosen, 'pls.c' must be specified")
-      if(length(pls.c) != 2 | !is.numeric(pls.c) | missing(pls.c))
-        stop("When either 'wapls1' or 'wapls2' are chosen, 'pls.c' must be a numerical vector of length 2 which specifies both the minimum (first value) and the maximum (second value) number of PLS components")
-      if(diff(pls.c) < 0)
-        stop("The number of minimum PLS components specified exedes the maximum. The first value in 'pls.c' must be the minimum number of PLS components")
-    }else{
-      if(missing(pls.c))
-        stop("When 'pls' is chosen, 'pls.c' must be specified")
-      if(length(pls.c) != 1 | !is.numeric(pls.c))
-        stop("When 'pls'' is chosen, 'pls.c' must be a single numerical value specifiying the maximum number of PLS components to be evaluated")
-    }
-    plsF <- pls.c
-  }else{
-    plsF <- NULL
-  }
-  
-  if(sum(c("loc_crossval", "NNv") %in% mblCtrl$valMethod) == 2)
-    mblCtrl$valMethod <- "both"
-  
-  if("NNv" %in% mblCtrl$valMethod & nrow(Xu) < 3)
-    stop("For nearest neighbour validation ('NNv') Xu must contain at least 3 observations")
-  
-  if(mblCtrl$valMethod %in% c("NNv", "both") & nrow(Xu) < 3)
-    stop("For nearest neighbour validation (specified in mblCtrl$valMethod with 'NNv') Xu must contain at least 3 observations")
-  
-  if(!is.null(Yu)){
+
+  if (!is.null(Yu)) {
     Yu <- as.matrix(Yu)
-    if(length(Yu) != nrow(Xu))
-      stop("length(Yu) must be equal to nrow(Xu)")
-    val <- data.frame(y = Yu) 
-  } else {
-    val <- data.frame(y = rep(NA, nrow(Xu)))
+    if (length(Yu) != nrow(Xu)) {
+      stop("Number of observations in Yu and Xu differ")
+    }
   }
-  val$mat <- Xu
-  
-  if(!missing(k)){
+
+  if (!is.null(k)) {
     k <- as.integer(k)
-    if(min(k) < 10)
-      stop("Minimum number of nearest neighbours allowed is 10")
-    if(max(k) > nrow(Xr))
-      stop("The number of nearest neighbours cannot exceed the number of reference observations")
-  }else
-    k <- NULL
-  
-  call.f <-(match.call())    
-  components <- NULL
-  
-  if(!missing(dissimilarityM)){
-    if(dissUsage == "predictors"){
-      d.cal.mat <- dissimilarityM[1:nrow(Xr), 1:nrow(Xr)]
-      d.mat <- dissimilarityM[1:nrow(Xr),(1+nrow(Xr)):ncol(dissimilarityM)]
-    }else {
-      d.mat <- dissimilarityM
+    if (min(k) < 4) {
+      stop("Minimum number of nearest neighbors allowed is 3")
     }
-    
-  }else{
-    # dissimilarity matrix computation between Xr and Xu     
-    if(dissUsage != "predictors"){
-      if(mblCtrl$sm == "euclid"){  
-        f <- ncol(Xr)
-        # fast dissimilarity function implemented in C++
-        d.mat <- fDiss(Xr = Xr, X2 = Xu,  method = "euclid", center = mblCtrl$center, scaled = mblCtrl$scaled) # standardized distance
-      } 
-      
-      if(mblCtrl$sm == "pc"){
-        mtd <- ifelse(mblCtrl$pcMethod == "svd", "pca", "pca.nipals")  
-        pcDistance <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = mtd, local = FALSE, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call. = FALSE, cores = mblCtrl$cores)
-        d.mat <- pcDistance$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDistance$n.components
-        rm(pcDistance)
-        components <- list(n.components = npcs)
-      } 
-      
-      if(mblCtrl$sm == "pls"){  
-        pcDistance <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, method = "pls", Yr = Yr, local = FALSE, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call. = FALSE, cores = mblCtrl$cores)
-        d.mat <- pcDistance$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDistance$n.components
-        rm(pcDistance)
-        components <- list(n.components = npcs)
-      }       
-      
-      if(mblCtrl$sm == "loc.pc"){
-        mtd <- ifelse(mblCtrl$pcMethod == "svd", "pca", "pca.nipals")  
-        pcDissim <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = mtd, local = TRUE, k0 = mblCtrl$k0, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call.=FALSE)
-        d.mat <- pcDissim$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDissim$n.components
-        
-        loc.r <- pcDissim$loc.n.components
-        loc.r$sample.nm <- sub("X2", "Xu", loc.r$sample.nm)
-        loc.npcs <- loc.r$loc.n.components
-        
-        rm(pcDissim)
-        components <- list(n.components = npcs, loc.n.components = loc.npcs)
-      } 
-      
-      if(mblCtrl$sm == "loc.pls"){
-        pcDissim <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = "pls", local = TRUE, k0 = mblCtrl$k0, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call.=FALSE)
-        d.mat <- pcDissim$dissimilarity[ , , drop = TRUE]
-        
-        loc.r <- pcDissim$loc.n.components
-        loc.r$sample.nm <- sub("X2", "Xu", loc.r$sample.nm)
-        loc.npcs <- loc.r$loc.n.components
-        
-        npcs <- pcDissim$n.components
-        rm(pcDissim)
-        components <- list(n.components = npcs, loc.n.components = loc.npcs)
-      } 
-      
-      if(mblCtrl$sm == "movcor") {
-        # correlation moving window approach as implemented in movcorDist.cpp   
-        d.mat <-  corDiss(Xr = Xr, X2= Xu, ws = mblCtrl$ws, center = mblCtrl$center, scaled = mblCtrl$scaled)
-      }
-      
-      if(mblCtrl$sm == "cor"){
-        d.mat <-  corDiss(Xr = Xr, X2= Xu, ws = NULL, center = mblCtrl$center, scaled = mblCtrl$scaled)
-      }      
-      
-      if(mblCtrl$sm == "sidF") {
-        if(mblCtrl$center)
-          warning("Centering was not applied in the computation of the sidF, because when the sid function is computed using mode = 'feature', it does not accept negative values (which are generated by centering).")
-        d.mat <- sid(Xr = Xr, X2 = Xu, mode = "feature", center = FALSE, scaled = mblCtrl$scaled, reg = 10^-4)$sid
-      }
-      
-      if(mblCtrl$sm == "sidD") {
-        d.mat <- sid(Xr = Xr, X2 = Xu, mode = "density", center = mblCtrl$center, scaled = mblCtrl$scaled, reg = 10^-4)$sid
-      }
-      
-      if(mblCtrl$sm == "cosine") {
-        d.mat <-  fDiss(Xr = Xr, X2 = Xu, center = mblCtrl$center, scaled = mblCtrl$scaled, method = "cosine") 
-      }
-    } else{     
-      # Distance matrix computation between all the objects resulting from rbind(Xr,Xu)  
-      if(mblCtrl$sm == "euclid"){ 
-        f <- ncol(Xr)
-        # fast distance function implemented in C++
-        d.mat <-   fDiss(Xr = rbind(Xr, Xu), X2 = NULL, center = mblCtrl$center, scaled = mblCtrl$scaled, method= "euclid") # standardized distance
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      } 
-      
-      if(mblCtrl$sm == "pc"){  
-        mtd <- ifelse(mblCtrl$pcMethod == "svd", "pca", "pca.nipals")  
-        pcDistance <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = mtd, local = FALSE, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = TRUE, call.=FALSE, cores = mblCtrl$cores)
-        d.mat <- pcDistance$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDistance$n.components
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-        rm(pcDistance)
-        components <- list(n.components = npcs)
-      } 
-      
-      if(mblCtrl$sm == "pls"){  
-        pcDistance <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = "pls", local = FALSE, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = TRUE, call.=FALSE, cores = mblCtrl$cores)
-        d.mat <- pcDistance$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDistance$n.components
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-        rm(pcDistance)
-        components <- list(n.components = npcs)
-      } 
-      
-      if(mblCtrl$sm == "loc.pc"){
-        mtd <- ifelse(mblCtrl$pcMethod == "svd", "pca", "pca.nipals") 
-        pcDissim <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = mtd, local = TRUE, k0 = mblCtrl$k0, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call.=FALSE)
-        d.mat <- pcDissim$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDissim$n.components
-        loc.r <- pcDissim$loc.n.components
-        loc.r$sample.nm <- sub("X2", "Xu", loc.r$sample.nm)
-        loc.npcs <- loc.r$loc.n.components
-        rm(pcDissim)
-        components <- list(n.components = npcs, loc.n.components = loc.npcs)
-      } 
-      
-      if(mblCtrl$sm == "loc.pls"){
-        pcDissim <- orthoDiss(Xr = Xr, X2 = Xu, pcSelection = mblCtrl$pcSelection, Yr = Yr, method = "pls", local = TRUE, k0 = mblCtrl$k0, center = mblCtrl$center, scaled = mblCtrl$scaled, return.all = FALSE, call.=FALSE)
-        d.mat <- pcDissim$dissimilarity[ , , drop = TRUE]
-        npcs <- pcDissim$n.components    
-        loc.r <- pcDissim$loc.n.components
-        loc.r$sample.nm <- sub("X2", "Xu", loc.r$sample.nm)
-        loc.npcs <- loc.r$loc.n.components
-        rm(pcDissim)
-        components <- list(n.components = npcs, loc.n.components = loc.npcs)
-      } 
-      
-      if(mblCtrl$sm == "movcor") {
-        # correlation moving window approach as implemented in movcorDist.cpp
-        d.mat <- corDiss(Xr = rbind(Xr, Xu), X2 = NULL, ws = mblCtrl$ws, center = mblCtrl$center, scaled = mblCtrl$scaled)
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      }
-      
-      if(mblCtrl$sm == "cor") {
-        d.mat <-  corDiss(Xr = rbind(Xr, Xu), X2 = NULL, ws = NULL, center = mblCtrl$center, scaled = mblCtrl$scaled)
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      }
-      
-      if(mblCtrl$sm == "sidF") {
-        if(mblCtrl$center)
-          warning("Centering was not applied in the computation of the sidF, because when the sid function is computed using mode = 'feature', it does not accept negative values (which are generated by centering).")
-        d.mat <- sid(Xr = rbind(Xr, Xu), X2 = NULL, mode = "feature", center = FALSE, scaled = mblCtrl$scaled, ...)$sid
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      }
-      
-      if(mblCtrl$sm == "sidD") {
-        d.mat <- sid(Xr = rbind(Xr, Xu), X2 = NULL, mode = "density", center = mblCtrl$center, scaled = mblCtrl$scaled, ...)$sid
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      }
-      
-      if(mblCtrl$sm == "cosine") {
-        d.mat <-   fDiss(Xr = rbind(Xr, Xu), X2 = NULL, center = mblCtrl$center, scaled = mblCtrl$scaled, method = "cosine") 
-        colnames(d.mat) <- paste("X2", 1:ncol(d.mat), sep = ".")
-        d.cal.mat <- d.mat[1:nrow(Xr), 1:nrow(Xr)]
-        d.mat <- d.mat[1:nrow(Xr),(1+nrow(Xr)):ncol(d.mat)]
-      }
+    if (max(k) > nrow(Xr)) {
+      stop(paste0(
+        "The number of nearest neighbors cannot exceed the number ",
+        "of observations in Xr"
+      ))
     }
   }
-  dimnames(d.mat) <- NULL
-  
-  if(dissUsage!="predictors")
-    d.cal.mat <- NULL
-  
-  # Global H
-  mtd <- ifelse(mblCtrl$pcMethod == "svd", "pca", "pca.nipals")  
-  pca <- pcProjection(Xr = rbind(Xr, Xu), X2 = NULL, pcSelection = mblCtrl$pcSelection, method = mtd, Yr = c(Yr, rep(NA, nrow(Xu))), center = mblCtrl$center, scaled = mblCtrl$scaled, call.=FALSE, cores = mblCtrl$cores)
-  npcs <- pca$n.components 
-  
-  scores <- sweep(pca$scores, 2, pca$sc.sdv, "/")
-  scores.cal <- scores[1:nrow(Xr), , drop=F]
-  scores.val <- scores[(1+nrow(Xr)):nrow(scores), , drop=F]
-  
-  GH <- as.vector((fDiss(Xr = scores.val, X2 = t(colMeans(scores.cal)), center = FALSE, scaled = FALSE, method = "euclid")))
-  rm(scores)
-  
-  # convert k.dis into k
-  if(is.null(k)) {
-    dtc <- sort(dtc)    
-    k <- matrix(NA, nrow = nrow(Xu), ncol = length(dtc))
-    for(j in 1:length(dtc)){
-      k[,j] <- apply(d.mat,2,function(x) sum(x <= dtc[j], na.rm = TRUE))
-    }      
-    k.org <- k
-    k_mat <- pmin(pmax(k.org, k.min), k.max) 
+
+  has_projection <- FALSE
+
+  if (!is.matrix(diss_method)) {
+    # when .local = TRUE, k_max is replaced with k_pre inside get_neighbor_info()
+    neighborhoods <- get_neighbor_info(
+      Xr = Xr, Xu = Xu,
+      diss_method = diss_method, Yr = Yr,
+      k = k_max, k_diss = k_diss_max,
+      k_range = k_range,
+      spike = spike, pc_selection = pc_selection,
+      return_dissimilarity = control$return_dissimilarity,
+      center = center, scale = scale,
+      gh = gh, diss_usage = diss_usage,
+      allow_parallel = control$allow_parallel,
+      ...
+    )
+    diss_xr_xu <- neighborhoods$dissimilarity
+    if (!is.null(neighborhoods$projection)) {
+      diss_xr_xu_projection <- neighborhoods$projection
+      has_projection <- TRUE
+    }
   } else {
-    k.org <- k_mat <- matrix(k, nrow = nrow(Xu), ncol = length(k), byrow = TRUE)    
-  }  
-  
-  
-  if(mblCtrl$valMethod %in% c("loc_crossval", "both") & method %in% c("pls", "wapls1"))
-  {
-    if(((floor(min(min(k_mat), ncol(Xr)) * mblCtrl$p)) - 1) < min(plsF)){
-      stop(paste("The number of pls components must be lower than ", mblCtrl$p*100, "% (i.e. mblCtrl$p) of the number of neighbours to be used"))
-    }
-  }
-  
-  if(method != "gpr"){
-    if(floor(min(min(k_mat), ncol(Xr)) * mblCtrl$p) < min(plsF)){
-      stop("The number of pls components must be lower than the number of neighbours to be used")
-    }
-  }
-  
-  
-  
-  it <- i <- kn.org <- NULL
-  predobs <- foreach(tmp.val = iter(val, by = "row"), kn.org = iter(k.org, by = "row"), i = icount(),
-                     it = isubset(x=Xr,Dx=d.cal.mat,D=d.mat,k=k_mat),
-                     .combine = rbind, .inorder = FALSE,
-                     .export = c("orthoDiss",  
-                                 "orthoProjection", 
-                                 "simEval", "corDiss", "fDiss", 
-                                 "locFitnpred", "plsCv", "cSds", "wapls.weights")) %mydo%{            
-                                   
-                                   #    if(mblCtrl$valMethod %in% c("loc_crossval", "both") & method %in% c("pls", "wapls1"))
-                                   #    {
-                                   #      if(((floor(min(it$k, nrow(it$d)) * mblCtrl$p)) - 1) < min(plsF)){
-                                   #        stop(paste("The number of pls components must be lower than ", mblCtrl$p*100, "% (i.e. mblCtrl$p) of the number of neighbours to be used"))
-                                   #      }
-                                   #    }
-                                   #    
-                                   #    if(method != "gpr"){
-                                   #      if(((floor(min(it$k, nrow(it$d)))) - 1) < min(plsF)){
-                                   #        stop("The number of pls components must be lower than the number of neighbours to be used")
-                                   #      }
-                                   #    }
-                                   #    
-                                   # k nearest neighbours loop. Must be within the sample loop to allow possibly for 'local' tuning
-                                   
-                                   predobs <- data.frame(o.index = i, 
-                                                         k.org = c(kn.org), k = it$k,
-                                                         pls.comp = NA,
-                                                         min.pls = NA,
-                                                         max.pls = NA,
-                                                         yu.obs = tmp.val$y, pred = NA, 
-                                                         yr.min.obs = NA, yr.max.obs = NA,
-                                                         index.nearest.in.ref = it$index[1],
-                                                         y.nearest = Yr[it$index[1]],
-                                                         y.nearest.pred = NA,
-                                                         loc.rmse.cv = NA,
-                                                         loc.st.rmse.cv = NA,
-                                                         dist.nearest = min(it$d),
-                                                         dist.k.farthest = NA, rep = NA)
-                                   
-                                   
-                                   if(mblCtrl$sm == "loc.pc" & dissUsage == "predictors")
-                                   {
-                                     pca.n <- plsProjection(Xr = it$x, Yr = Yr[it$index[1:max(it$k)]], Xu = tmp.val$mat, nPf = loc.npcs[i], scaled = mblCtrl$scaled)
-                                     pca.i <- list(x = pca.n$scores, sdev = cSds(pca.n$scores))
-                                     scores.i <- sweep(pca.i$x[,1:loc.npcs[i]], 2, pca.i$sdev[1:loc.npcs[i]], "/")
-                                     locD.i <-   fDiss(Xr = scores.i, X2 = scores.i, center = FALSE, scaled = FALSE, method = "euclid")     
-                                   }
-                                   
-                                   if(mblCtrl$progress)
-                                   {
-                                     cat ((paste("Predicting sample:",i)) ," ") 
-                                     pb <- txtProgressBar(width = 10, char = "-")
-                                   }
-                                   
-                                   for(kk in 1:length(it$k))
-                                   {
-                                     knkk <- it$k[kk]
-                                     tmp.val.k <- tmp.val
-                                     
-                                     if(mblCtrl$progress)
-                                       setTxtProgressBar(pb, kk/length(it$k))
-                                     
-                                     # If the sample has not been predicted before, then create a model and predict it
-                                     if(knkk != ifelse(kk == 1, 0, it$k[kk-1])){
-                                       
-                                       predobs$rep[kk] <- 0
-                                       
-                                       ###############################################################################################
-                                       dk <- it$index[1:knkk]
-                                       
-                                       # Select cal
-                                       tmp.cal <- data.frame(y = Yr[dk])
-                                       
-                                       if(!is.null(group))
-                                         tmp.group <- as.factor(as.character(group[dk]))
-                                       else
-                                         tmp.group <- NULL
-                                       
-                                       tmp.cal$mat  <- it$x[1:knkk,,drop=F]                           
-                                       
-                                       minmax <- range(tmp.cal$y, na.rm=T) 
-                                       predobs$yr.min.obs[kk] <- minmax[1]
-                                       predobs$yr.max.obs[kk] <- minmax[2]
-                                       predobs$dist.k.farthest[kk] <- max(it$d[dk])
-                                       
-                                       if(dissUsage == "weights")
-                                       {
-                                         # Weights are defined according to a tricubic function 
-                                         # as in Cleveland and Devlin (1988) and Naes and Isaksson (1990).
-                                         stdd <- it$d[dk]/max(it$d[dk])
-                                         i.wgts <- (1 - (stdd^3))^3
-                                         i.wgts[which(i.wgts == 0)] <- 1e-04
-                                       } else {i.wgts <- rep(1,knkk)}
-                                       
-                                       if(dissUsage == "predictors")
-                                       {
-                                         if(kk == 1) {tmp.val.k$mat <- tmp.val$mat}
-                                         tmp.val$mat <- tmp.val.k$mat
-                                         nms <- c(paste("k",(1:knkk), sep = ""), colnames(tmp.cal$mat))
-                                         if(mblCtrl$sm == "loc.pc")
-                                         {           
-                                           tmp.cal$mat <- cbind(locD.i[1:knkk, 1:knkk] ,tmp.cal$mat)
-                                         }else{
-                                           tmp.cal$mat <- cbind(it$dx[1:knkk, 1:knkk] ,tmp.cal$mat)
-                                         }
-                                         tmp.val.k$mat <- cbind(t(it$d[dk]), tmp.val$mat)
-                                         colnames(tmp.cal$mat) <- nms
-                                         colnames(tmp.val.k$mat) <- nms
-                                       }
-                                       
-                                       scale <- mblCtrl$scaled
-                                       
-                                       # local fit
-                                       i.pred <- locFitnpred(x = tmp.cal$mat, y = tmp.cal$y, 
-                                                             predMethod = method, 
-                                                             scaled = scale, pls.c = plsF,
-                                                             weights = i.wgts,
-                                                             newdata = as.vector(tmp.val.k$mat), 
-                                                             CV = mblCtrl$valMethod %in% c("loc_crossval", "both"),
-                                                             .optimize = mblCtrl$localOptimization,
-                                                             group = tmp.group,
-                                                             p = mblCtrl$p, resampling = mblCtrl$resampling,
-                                                             noise.v = noise.v, range.pred.lim = mblCtrl$range.pred.lim,
-                                                             pls.max.iter = pls.max.iter, pls.tol = pls.tol)
-                                        
-                                        predobs$pred[kk] <- i.pred$prediction
-                                       
-                                        
-                                        if(mblCtrl$valMethod %in% c("loc_crossval","both")){
-                                          if(mblCtrl$localOptimization & method %in% c("pls", "wapls1")){
-                                            if(method == "pls"){
-                                              o <- i.pred$validation$bestpls.c
-                                              predobs$pls.comp[kk] <- o
-                                              oplsfs <- o
-                                            }else{
-                                              o <- which.min(i.pred$validation$cvResults$rmse.cv)
-                                              oplsfs <- i.pred$validation$cvResults[o,c("minF", "maxF")]
-                                              predobs$min.pls[kk] <- oplsfs[[1]]
-                                              predobs$max.pls[kk] <- oplsfs[[2]]
-                                              
-                                            }
-                                            predobs$loc.rmse.cv[kk] <- i.pred$validation$cvResults$rmse.cv[o]
-                                            predobs$loc.st.rmse.cv[kk] <- i.pred$validation$cvResults$st.rmse.cv[o]
-                                          }else{
-                                            oplsfs <- plsF
-                                            o <- ifelse(method == "pls", plsF, 1)
-                                            predobs$pls.comp[kk] <- ifelse(method == "pls", plsF, NA)
-                                            predobs$min.pls[kk] <- ifelse(method == "wapls1", plsF[[1]], NA)
-                                            predobs$max.pls[kk] <- ifelse(method == "wapls1", plsF[[2]], NA)
-                                            predobs$loc.rmse.cv[kk] <- i.pred$validation$cvResults$rmse.cv[o]
-                                            predobs$loc.st.rmse.cv[kk] <- i.pred$validation$cvResults$st.rmse.cv[o]
-                                          }
-                                        }else{
-                                          predobs$pls.comp[kk] <- ifelse(method == "pls", plsF, NA)
-                                          predobs$min.pls[kk] <- ifelse(method == "wapls1", plsF[[1]], NA)
-                                          predobs$max.pls[kk] <- ifelse(method == "wapls1", plsF[[2]], NA)
-                                          oplsfs <- plsF
-                                        }
-                                       
-                                       
-                                       if(mblCtrl$valMethod %in% c("NNv","both"))
-                                       {
-                                         if(!is.null(group))
-                                           out.g <- which(tmp.group == tmp.group[[1]])
-                                         else
-                                           out.g <- 1
-                                         
-                                         nearest.pred <- locFitnpred(x = tmp.cal$mat[-c(out.g),], y = tmp.cal$y[-c(out.g)], 
-                                                                     predMethod = method, 
-                                                                     scaled = scale, pls.c = oplsfs, 
-                                                                     noise.v = noise.v,
-                                                                     newdata = as.vector(tmp.cal$mat[1,]), 
-                                                                     CV = FALSE,  .optimize = FALSE, range.pred.lim = mblCtrl$range.pred.lim, 
-                                                                     pls.max.iter = pls.max.iter, pls.tol = pls.tol)$prediction
-                                         
-                                         predobs$y.nearest.pred[kk] <- nearest.pred/i.wgts[1]
-                                       }
-                                     } else {
-                                       predobs[kk,] <- predobs[(kk-1),]
-                                       predobs$rep[[kk]] <- 1
-                                     }     
-                                   }
-                                   if(mblCtrl$progress)
-                                     close(pb)
-                                   
-                                   predobs$k <- as.factor(predobs$k)
-                                   predobs
-                                 }
-  
-  out <-c(if(missing(Yu)){"yu.obs"},
-          if(is.null(dtc)){"k.org"},
-          if(!(mblCtrl$valMethod %in% c("NNv", "both"))){"y.nearest.pred"},
-          if(method != "wapls1"){c("min.pls","max.pls")},
-          if(method != "pls"){"pls.comp"},
-          if(!(mblCtrl$valMethod %in% c("loc_crossval", "both"))){c("loc.rmse.cv", "loc.st.rmse.cv")},
-          "rep")
-  
-  predobs <- predobs[,!(colnames(predobs) %in% out)]
-  predobs <- predobs[order(predobs$o.index),]
-  
-  dfrn <- function(x,...){
-    x <- data.frame(x)
-    rownames(x) <- 1:nrow(x)
-    return(x)
-  }
-  
-  if(is.null(dtc)){  
-    predobs <- by(predobs, as.numeric(paste(predobs$k, ".",predobs$rep, sep="")), dfrn)
-    names(predobs) <- paste("Nearest_neighbours_", k, sep = "")    
-    trh <- data.frame(k = k)
-  } else{
-    d.dist <- rep(dtc, nrow(Xu))
-    distance <- (predobs$k.org - as.numeric(as.vector(predobs$k))) == 0
-    nms <- colnames(predobs)
-    predobs <- cbind(predobs, k.diss = d.dist, distance = distance)
-    nms <- c(nms[1], "k.diss", "distance" ,nms[-1])
-    predobs <- predobs[,nms]
-    predobs <- by(predobs, predobs$k.diss, FUN = dfrn)
-    names(predobs) <- paste("k distance:", dtc)
-    bounded <- function(x, ...){
-      return(sum(x$distance == FALSE))
-    }
-    trh <- data.frame(k.diss = dtc, p.bounded = paste(round(100*sapply(predobs, bounded)/nrow(Xu), 3),"%", sep =""))
-  }
-  
-  if(mblCtrl$valMethod %in% c("loc_crossval", "both"))
-  {
-    mean.loc.res <- function(x,...){
-      mean.loc.rmse <- mean(x$loc.rmse.cv)
-      mean.loc.st.rmse <- mean(x$loc.st.rmse.cv)
-      return(c(loc.rmse = mean.loc.rmse, loc.st.rmse = mean.loc.st.rmse))
-    }
-    loc.res <- as.data.frame(t(sapply(predobs, mean.loc.res)))
-    loc.res <- cbind(trh, 
-                     rmse = loc.res$loc.rmse, 
-                     st.rmse = loc.res$loc.st.rmse)
-  } else {loc.res <- NULL}
-  
-  if(mblCtrl$valMethod %in% c("NNv", "both"))
-  {
-    nn.stats <- function(x,...){
-      nn.rmse <- (mean((x$y.nearest - x$y.nearest.pred)^2))^0.5
-      nn.st.rmse <- nn.rmse / diff(range(x$y.nearest))  
-      nn.rsq <- (cor(x$y.nearest, x$y.nearest.pred))^2
-      return(c(nn.rmse = nn.rmse, nn.st.rmse = nn.st.rmse, nn.rsq = nn.rsq))
-    }
-    
-    loc.nn.res <- as.data.frame(t(sapply(predobs, nn.stats)))
-    loc.nn.res <- cbind(trh, 
-                        rmse = loc.nn.res$nn.rmse, 
-                        st.rmse = loc.nn.res$nn.st.rmse, 
-                        r2 = loc.nn.res$nn.rsq)
-  } else {loc.nn.res <- NULL}
-  
-  if(!is.null(Yu))
-  {
-    yu.stats <- function(x,...){
-      yu.rmse <- (mean((x$yu.obs - x$pred)^2))^0.5
-      yu.st.rmse <- yu.rmse / diff(range(x$yu.obs)) 
-      yu.rsq <- (cor(x$yu.obs, x$pred))^2
-      return(c(yu.rmse = yu.rmse, yu.st.rmse = yu.st.rmse, yu.rsq = yu.rsq))
-    }
-    pred.res <- as.data.frame(t(sapply(predobs, yu.stats)))
-    pred.res <- cbind(trh, 
-                      rmse = pred.res$yu.rmse, 
-                      st.rmse = pred.res$yu.st.rmse, 
-                      r2 = pred.res$yu.rsq)
-  } else {pred.res <- NULL}
-  
-  if(mblCtrl$valMethod == "none"){loc.res <- NULL}
-  
-  mblCtrl$valMethod <- ini.cntrl$valMethod  
-  
-  if(!is.null(mblCtrl$sm)){
-    if(mblCtrl$sm %in% c("movcor", "loc.pc", "loc.pls")){
-      cntrlParam <- list(sm = mblCtrl$sm,
-                         smParam = ifelse(mblCtrl$sm == "movcor", mblCtrl$ws, mblCtrl$k0),
-                         returnDiss = mblCtrl$returnDiss,
-                         pcSelection = list(method = pcSel, value = trsh),
-                         pcMethod = mblCtrl$pcMethod,
-                         center = mblCtrl$center,
-                         scaled = mblCtrl$scaled,
-                         valMethod = mblCtrl$valMethod,
-                         resampling = mblCtrl$resampling, 
-                         p = mblCtrl$p,
-                         range.pred.lim = mblCtrl$range.pred.lim,
-                         progress = mblCtrl$progress, 
-                         cores = 1)
-      nm <- ifelse(mblCtrl$sm == "movcor", "ws", "k0")
-      names(cntrlParam)[names(cntrlParam) == "smParam"] <- nm
-    } else{
-      cntrlParam <- list(sm = mblCtrl$sm,
-                         returnDiss = mblCtrl$returnDiss,
-                         pcSelection = list(method = pcSel, value = trsh),
-                         pcMethod = mblCtrl$pcMethod,
-                         center = mblCtrl$center,
-                         scaled = mblCtrl$scaled,
-                         valMethod = mblCtrl$valMethod,
-                         localOptimization = mblCtrl$localOptimization,
-                         resampling = mblCtrl$resampling, 
-                         p = mblCtrl$p,
-                         range.pred.lim = mblCtrl$range.pred.lim,
-                         progress = mblCtrl$progress, 
-                         cores = mblCtrl$cores,
-                         allowParallel = mblCtrl$cores)
-    }
-  }
-  
-  if(!sum(unlist(ini.cntrl) == unlist(cntrlParam))){
-    cntrlParam <- list(initial = ini.cntrl, finallyUsed = cntrlParam)
-  }
-  
-  if(ini.cntrl$returnDiss){
-    s.meth <- ifelse(mblCtrl$sm == "none", "A matrix provided by the user through the 'dissimilarityM' argument", mblCtrl$sm)
-    if(dissUsage == "predictors"){
-      dissimilarities <- list(method = s.meth, Xr_Xu = d.mat, Xr_Xr = d.cal.mat)
-    }else{
-      dissimilarities <- list(method = s.meth, Xr_Xu = d.mat) 
-    }
-  }
-  
-  resultsList <- list(call = call.f,
-                      cntrlParam = cntrlParam,
-                      dissimilarities = if(ini.cntrl$returnDiss){dissimilarities}else{NULL}, 
-                      totalSamplesPredicted = nrow(Xu),
-                      pcAnalysis = list(scores_Xr = scores.cal, scores_Xu = scores.val, n.componentsUsed = npcs, GH = GH),
-                      components = components,
-                      localCrossValStats = loc.res, 
-                      nnValStats = loc.nn.res, 
-                      YuPredictionStats = pred.res, 
-                      results = predobs)
-  
-  resultsList <- resultsList[!sapply(resultsList,is.null)]
-  
-  attr(resultsList, "call") <- call.f
-  class(resultsList) <- c("mbl","list")  
-  return(resultsList)
-}
+    diss_xr_xr <- NULL
 
-#' @title Gaussian process regression with dot product covariance
-#' @description internal
-#' @keywords internal
-gpr.dp <- function(Xn, Yn, noise.v = 0.001, scaled = TRUE, center = FALSE, x.add = NULL){
-  #   if(!is.null(x.add)){
-  #     Xn <- rbind(x.add, Xn)
-  #   }
-  if(center)
-  {
-    center <- colMeans(Xn)
-    Xn <- sweep(x = Xn, MARGIN = 2, STATS = center, FUN = "-")
-  }else{
-    center <- NULL
-  }
-  if(sum(scaled))
-  {
-    scale <- cSds(Xn)
-    if(length(scaled)> 1){
-      scale <- scale * scaled
-      scale[scale == 0] <- 1
+    dim_diss <- dim(diss_method)
+    if (diss_usage == "predictors") {
+      if (diff(dim_diss) != 0 | dim_diss[1] != n_total | any(diag(diss_method) != 0)) {
+        stop(paste0(
+          "If a matrix is passed to 'diss_method' ",
+          "and diss_usage = 'predictors', this matrix must be ",
+          "squared symmetric zeroes in its diagonal"
+        ))
+      }
+      diss_xr_xr <- diss_method[1:nrow(Xr), 1:nrow(Xr)]
+      diss_xr_xu <- diss_method[1:nrow(Xr), (1 + nrow(Xr)):ncol(diss_method)]
+      rm(diss_method)
+      gc()
     }
-    Xn <- sweep(x = Xn, MARGIN = 2, STATS = scale, FUN = "/")
-  }else{
-    scale <- NULL
-  }
-  
-  #   if(!is.null(x.add)){
-  #     Xn <- Xn[-1,]
-  #   }
-  #   
-  K <- Xn %*% t(Xn)
-  vrnc <- diag(rep(noise.v, nrow(Xn)))
-  alpha <- solve((K + vrnc), Yn)
-  return(list(Xn = Xn, alpha = alpha, scale = scale, center = center))
-}
-
-#' @title Prediction function for "gpr.dp" (Gaussian process regression with dot product covariance)
-#' @description internal
-#' @keywords internal
-pred.gpr.dp <- function(object, newdata){
-  if(!is.null(object$center)){
-    newdata <- sweep(x = newdata, MARGIN = 2, STATS = object$center, FUN = "-")
-  }
-  if(!is.null(object$scale)){
-    newdata <- sweep(x = newdata, MARGIN = 2, STATS = object$scale, FUN = "/")
-  }
-  predicted <- newdata %*% t(object$Xn) %*% object$alpha
-}
-
-#' @title Local multivariate regression
-#' @description internal
-#' @keywords internal
-locFitnpred <- function(x, y, predMethod, scaled = TRUE, weights = NULL, newdata, 
-                        pls.c = NULL, CV = FALSE, .optimize = FALSE, resampling = 10, p = 0.75, group = NULL, noise.v = 0.001, 
-                        range.pred.lim = TRUE,
-                        pls.max.iter = 1, pls.tol = 1e-6){
-  
-  ## Sanity checks are dactivated here for speeding-up the code. 
-  ## This function is only used within the mbl and the checks here are already done either in that function or
-  ## in the mblControl function. Since the present function goes into a main loop in the mbl funtion,
-  ## this means that the checks will be done during every iteration
-  #   if(nrow(x) != length(y))
-  #     stop("length of the response variable (y) does not match with the number of observations in x")
-  
-  #   if(!is.vector(weights) & !is.null(weights))
-  #     stop("if the argument weights is specified it must be a vector")
-  #   if(!is.null(weights)){
-  #     if(length(weights) != length(y))
-  #       stop("Length of the vector of weights does not match with the number of observations in x and y")
-  #   }
-  
-  #   if(predMethod != "gpr"){
-  #     if(predMethod == "pls" & length(pls.c) != 1)
-  #       stop("When predMethod = 'pls', pls.c must be a vector of length 1")
-  #     if(predMethod %in% c("wapls1"))
-  #       if(length(pls.c) != 2)
-  #         stop("When 'wapls1' is used as regression method, pls.c must be a vector of length 2 indicating a minimum and a maximum number of PLS components")
-  #   }
-  
-  if(is.null(weights))
-    weights <- 1
-  
-  #   if(CV){
-  #     if(!is.numeric(resampling) | length(resampling) != 1)
-  #       stop("resampling must be a single numeric value")
-  #     if(!is.numeric(p) | length(p) != 1 | p >= 1 | p <= 0)
-  #       stop("p must be a single numeric value higher than 0 and lower than 1")
-  #   }
-  
-  
-  #   if(!is.vector(newdata))
-  #     stop("'newdata' must be a vector")
-  
-  #   if(length(newdata) != ncol(x))
-  #     stop("Length of vector newdata must be equal to the number of columns of x")
-  
-  newdata <- t(newdata)
-  
-  if(any(cSds(x)==0)){
-    warning("One of the variables has zero variance. Data will not be scaled")
-    scaled <- FALSE
-  }
-  
-  results <- cvVal <- pred <- NULL
-  if(predMethod=="gpr") {    
-    if(CV)
-    {
-      cvVal <- gprCv(x = x, y = as.matrix(y), scaled = scaled, weights = weights, p = p, resampling = resampling, 
-                     group = group, retrieve = "final.model")
-      fit <- cvVal$model
-    } else { 
-      x <- sweep(x, 1, weights, "*")   ###MODIFIED
-      y <- y * weights
-      ##fit <- gpr.dp(Xn = x, Yn = y, noise.v = noise.v, scaled = scaled, x.add = newdata)
-      fit <- gprdp(X = x, Y = as.matrix(y), noisev = noise.v, scale = scaled)
+    if (diss_usage %in% c("weights", "none")) {
+      if (dim_diss[1] != n_xr & dim_diss[2] != n_xu) {
+        stop(paste0(
+          "If a matrix is passed to 'diss_method' ",
+          "and 'diss_usage' argument is set to either 'weights' or  ",
+          "'none', the number of rows and columns of this matrix ",
+          "must be equal to the number of rows of 'Xr' and the ",
+          "number of rows of 'Xu' respectively"
+        ))
+      }
     }
-    
-    ##pred <- pred.gpr.dp(fit, newdata = newdata)
-    pred <- predgprdp(Xz = fit$Xz, 
-                      alpha = fit$alpha, 
-                      newdata = newdata,
-                      scale = fit$is.scaled,
-                      Xcenter = fit$Xcenter,
-                      Xscale = fit$Xscale,
-                      Ycenter = fit$Ycenter,
-                      Yscale = fit$Yscale)[[1]]
-  } 
+    diss_xr_xu <- diss_method
+    append(
+      neighborhoods,
+      diss_to_neighbors(diss_xr_xu,
+        k = k, k_diss = k_diss, k_range = k_range,
+        spike = NULL,
+        return_dissimilarity = control$return_dissimilarity
+      )
+    )
+
+    if (gh) {
+      neighborhoods <- NULL
+      neighborhoods$gh$projection <- pls_projection(
+        Xr = Xr, Xu = Xu,
+        Yr = Yr,
+        pc_selection = pc_selection,
+        scale = scale, ...
+      )
+      neighborhoods$gh$gh_Xr <- f_diss(neighborhoods$gh$projection$scores,
+        Xu = t(colMeans(neighborhoods$gh$projection$scores)),
+        diss_method = "mahalanobis",
+        center = FALSE, scale = FALSE
+      )
+      neighborhoods$gh$gh_Xu <- neighborhoods$gh$gh_Xr[-c(1:nrow(Xr))]
+      neighborhoods$gh$gh_Xr <- neighborhoods$gh$gh_Xr[c(1:nrow(Xr))]
+      neighborhoods$gh <- neighborhoods$gh[c("gh_Xr", "gh_Xu", "projection")]
+    }
+
+    neighborhoods$diss_xr_xr <- diss_xr_xr
+    rm(diss_xr_xr)
+    rm(diss_method)
+    gc()
+  }
+
+  if (!is.null(k)) {
+    smallest_neighborhood <- neighborhoods$neighbors[1:min(k), , drop = FALSE]
+    smallest_n_neighbors <- colSums(!is.na(smallest_neighborhood))
+  }
+
+  if (!is.null(k_diss)) {
+    min_diss <- neighborhoods$neighbors_diss <= min(k_diss)
+    if (!is.null(spike)) {
+      min_diss[1:length(spike), ] <- TRUE
+    }
+    smallest_neighborhood <- neighborhoods$neighbors
+    smallest_neighborhood[!min_diss] <- NA
+    smallest_n_neighbors <- colSums(!is.na(smallest_neighborhood))
+    smallest_n_neighbors[smallest_n_neighbors < min(k_range)] <- min(k_range)
+    smallest_n_neighbors[smallest_n_neighbors > max(k_range)] <- max(k_range)
+  }
+
+
+  if (is_local_cv) {
+    min_n_samples <- floor(min(smallest_n_neighbors) * control$p) - 1
+    min_cv_samples <- floor(min(k, k_range) * (1 - control$p))
+    if (min_cv_samples < 3) {
+      stop(paste0(
+        "Local cross-validation requires at least 3 observations in ",
+        "the hold-out set, the current cross-validation parameters ",
+        "leave less than 3 observations in some neighborhoods."
+      ))
+    }
+  } else {
+    min_n_samples <- smallest_n_neighbors - 1
+  }
+
+  if (method$method %in% c("pls", "wapls")) {
+    max_pls <- max(method$pls_c)
+    if (any(min_n_samples < max_pls)) {
+      stop(paste0(
+        "More pls components than observations in some neighborhoods.\n",
+        "If 'local_cv' is being used, consider that some ",
+        "observations \nin the neighborhoods are hold-out for local ",
+        "validation"
+      ))
+    }
+  }
+
+
+  if (!".local" %in% names(input_dots)) {
+    iter_neighborhoods <- ith_mbl_neighbor(
+      Xr = Xr, Xu = Xu, Yr = Yr, Yu = Yu,
+      diss_usage = diss_usage,
+      neighbor_indices = neighborhoods$neighbors,
+      neighbor_diss = neighborhoods$neighbors_diss,
+      diss_xr_xr = neighborhoods$diss_xr_xr,
+      group = group
+    )
+  } else {
+    iter_neighborhoods <- ith_mbl_neighbor(
+      Xr = Xr, Xu = Xu, Yr = Yr, Yu = Yu,
+      diss_usage = "none",
+      neighbor_indices = neighborhoods$neighbors,
+      neighbor_diss = neighborhoods$neighbors_diss,
+      group = group
+    )
+  }
+
+  r_fields <- c(
+    "o_index", "k_diss", "k_original", "k", "npls", "min_pls", "max_pls",
+    "yu_obs", "pred", "yr_min_obs", "yr_max_obs",
+    "index_nearest_in_Xr", "index_farthest_in_Xr",
+    "y_nearest", "y_nearest_pred",
+    "y_farthest", "diss_nearest", "diss_farthest",
+    "loc_rmse_cv", "loc_st_rmse_cv", "loc_n_components", "rep"
+  )
+
+  n_ith_result <- ifelse(is.null(k_diss), length(k), length(k_diss))
+
+  template_pred_results <- data.table(matrix(NA, n_ith_result, length(r_fields),
+    dimnames = list(NULL, r_fields)
+  ))
+
+  template_pred_results$rep[1] <- 0
+
+  if (!is.null(k_diss)) {
+    template_pred_results$k_diss <- k_diss
+  } else {
+    template_pred_results$k <- k
+  }
+  pg_bar_width <- 10
+  # to_erase <- getOption("width") - pg_bar_width - (2 * nchar(nrow(Xu))) - 2
+  to_erase <- pg_bar_width + (2 * nchar(nrow(Xu))) + 8
+  to_erase <- paste(rep(" ", to_erase), collapse = "")
   
-  if(predMethod == "pls"){
-    
-    if(CV)
-    {
-      cvVal <- plsCv(x = x, y = as.matrix(y), ncomp = pls.c, 
-                     method = "pls",
-                     center = TRUE, scaled = scaled, 
-                     weights = weights, 
-                     p = p, resampling = resampling, 
-                     group = group, 
-                     retrieve = TRUE,
-                     .optimize = .optimize,
-                     max.iter = pls.max.iter, tol = pls.tol)
-      
-      
-      
-      fit <- cvVal$models
-      ncomp <- cvVal$bestpls.c
-      
+  if (verbose){
+    cat("\033[32m\033[3mPredicting...\n\033[23m\033[39m")
+  }
+  n_iter <- nrow(Xu)
+
+  pred_obs <- foreach(
+    i = 1:n_iter, ith_observation = iter_neighborhoods,
+    .inorder = FALSE,
+    .export = c(
+      "ortho_diss", "fit_and_predict", "pls_cv",
+      "get_col_sds", "get_wapls_weights"
+    ),
+    .noexport = c("Xr", "Xu")
+  ) %mydo% {
+    ith_pred_results <- template_pred_results
+    additional_results <- NULL
+    ith_pred_results$o_index[] <- i
+    if (".local" %in% names(input_dots) & diss_method %in% ortho_diss_methods) {
+      ith_observation <- get_ith_local_neighbors(
+        ith_xr = ith_observation$ith_xr,
+        ith_xu = ith_observation$ith_xu,
+        ith_yr = ith_observation$ith_yr,
+        ith_yu = ith_observation$ith_yu,
+        diss_usage = diss_usage,
+        ith_neig_indices = ith_observation$ith_neig_indices,
+        k = k_max, k_diss = k_diss_max,
+        k_range = k_range,
+        spike = spike,
+        diss_method = diss_method,
+        pc_selection = pc_selection,
+        center = center, scale = scale,
+        ith_group = ith_observation$ith_group,
+        ...
+      )
+
+      ith_pred_results$loc_n_components[] <- ith_observation$ith_components
+      additional_results$ith_neig_indices <- ith_observation$ith_neig_indices
+      additional_results$ith_neigh_diss <- ith_observation$ith_neigh_diss
+    }
+
+    if (verbose) {
+      cat(paste0("\033[34m\033[3m", i, "/", n_iter, "\033[23m\033[39m"))
+      pb <- txtProgressBar(width = pg_bar_width, char = "\033[34m_\033[39m")
+    }
+
+    if (!is.null(k_diss)) {
+      ith_diss <- ith_observation$ith_neigh_diss
+      if (!is.null(spike)) {
+        ith_diss[1:length(spike)] <- 0
+      }
+      ith_pred_results$k_original <- sapply(k_diss, FUN = function(x, d) sum(d < x), d = ith_diss)
+      ith_pred_results$k <- ith_pred_results$k_original
+      ith_pred_results$k[ith_pred_results$k_original < min(k_range)] <- min(k_range)
+      ith_pred_results$k[ith_pred_results$k_original > max(k_range)] <- max(k_range)
     } else {
-      x <- sweep(x, 1, weights, "*")   ###MODIFIED
-      y <- y * weights
-      fit <- fopls(X = x, Y = as.matrix(y), scale = scaled, ncomp = pls.c, maxiter = pls.max.iter, tol = pls.tol)
-      
-      ncomp <- pls.c
+      ith_pred_results$k <- k
     }
-    pred <- predopls(bo = fit$bo,
-                     b = fit$coefficients, 
-                     ncomp = ncomp, 
-                     newdata = newdata,
-                     scale = ifelse(nrow(fit$transf$Xscale) == 1, TRUE, FALSE),
-                     Xscale = fit$transf$Xscale)[,ncomp]
-  }
-  if(predMethod == "wapls1"){
-    if(CV)
-    {
-      cvVal <- plsCv(x = x, y = as.matrix(y), 
-                     ncomp = pls.c[[2]],
-                     method = "wapls1",
-                     center = TRUE, scaled = scaled, 
-                     minF = pls.c[[1]],
-                     newX = newdata,
-                     weights = weights, 
-                     p = p, resampling = resampling, 
-                     group = group, 
-                     retrieve = TRUE,
-                     .optimize = .optimize,
-                     max.iter = pls.max.iter, tol = pls.tol)
-      
-      fit <- cvVal$models
-      #rstls <- w[pls.c[[1]]:pls.c[[2]]] * colMeans(cvVal$cvResults[pls.c[[1]]:pls.c[[2]],])
-      if(!.optimize){
-        cvVal$cvResults <- data.frame(minF = pls.c[[1]], 
-                                      maxF = pls.c[[2]], 
-                                      rmse.cv = cvVal$cvResults$rmse.cv,
-                                      st.rmse.cv = cvVal$cvResults$st.rmse.cv,
-                                      rmse.sd.cv = cvVal$cvResults$rmse.sd.cv,     
-                                      rsq.cv = cvVal$cvResults$rsq.cv)
-        
-      }
-      
-      
-      ## here all the weights are output from 1 to plsMax
-      # w <- cvVal$compweights[!cvVal$compweights == 0]
-      w <- cvVal$compweights
-    } else {
-      x <- sweep(x, 1, weights, "*")   ###MODIFIED
-      y <- y * weights
-      fit <- fopls(X = x, Y = as.matrix(y), scale = scaled, ncomp = pls.c[[2]], maxiter = pls.max.iter, tol = pls.tol)
-      
-      # compute weights for PLS components selected (from plsMin to plsMax)
-      w <- rep(0, pls.c[[2]])
-      w[pls.c[[1]]:pls.c[[2]]] <- wapls.weights(plsO = fit, orgX = x, type = "w1", newX = t(newdata), pls.c = pls.c)       
-    }
-    
-    
-    # compute the weighted average of the multiple PLS predictions
-    #pred <- sum(c(predict(fit, newdata, ncomp = pls.c[[1]]:pls.c[[2]])) * w) # weighted preds
-    
-    predctn <- predopls(bo = fit$bo,
-                        b = fit$coefficients, 
-                        ncomp = pls.c[[2]], 
-                        newdata = newdata,
-                        scale = ifelse(nrow(fit$transf$Xscale) == 1, TRUE, FALSE),
-                        Xscale = fit$transf$Xscale)
-    pred <- sum(c(predctn) * w) # weighted preds
-  }
-  
-  if(range.pred.lim)
-  {
-    if(pred > max(y))
-      pred <- max(y)
-    if(pred < min(y))
-      pred <- min(y)
-  }
-  
-  results$validation <- cvVal
-  results$prediction <- as.vector(pred)
-  
-  return(results)
-}
 
-#' @title A simple ramdom sampling function
-#' @description internal
-#' @keywords internal
-smpl <- function(x){
-  if(length(x) == 1)
-    x <- c(x, x)
-  return(sample(x, size = 1))
-}
+    for (kk in 1:nrow(ith_pred_results)) {
+      if (verbose) {
+        setTxtProgressBar(pb, kk / nrow(ith_pred_results))
+      }
 
+      # If the sample has not been predicted before,
+      # then create a model and predict it (useful only when k_diss is used)
+      current_k <- ith_pred_results$k[kk]
+      if (current_k != ifelse(kk == 1, 0, ith_pred_results$k[kk - 1])) {
+        if (diss_usage == "predictors") {
+          keep_cols <- c(
+            1:current_k,
+            (1 + ith_observation$n_k):ncol(ith_observation$ith_xr)
+          )
+          i_k_xr <- ith_observation$ith_xr[1:current_k, keep_cols]
+          i_k_xu <- ith_observation$ith_xu[, keep_cols, drop = FALSE]
+        } else {
+          i_k_xr <- ith_observation$ith_xr[1:current_k, ]
+          i_k_xu <- ith_observation$ith_xu
+        }
+        i_k_yr <- ith_observation$ith_yr[1:current_k, , drop = FALSE]
+        i_k_yu <- ith_observation$ith_yu
+        kth_diss <- ith_observation$ith_neigh_diss[1:current_k]
+        ith_pred_results$rep[kk] <- 0
+        ith_yr_range <- range(i_k_yr)
+        ith_pred_results$yr_min_obs[kk] <- ith_yr_range[1]
+        ith_pred_results$yr_max_obs[kk] <- ith_yr_range[2]
+        ith_pred_results$diss_farthest[kk] <- max(kth_diss)
+        ith_pred_results$diss_nearest[kk] <- min(kth_diss)
+        ith_pred_results$y_farthest[kk] <- i_k_yr[which.max(kth_diss)]
+        ith_pred_results$y_nearest[kk] <- i_k_yr[which.min(kth_diss)]
+        ith_pred_results$index_nearest_in_Xr[kk] <- ith_observation$ith_neig_indices[which.min(kth_diss)]
+        ith_pred_results$index_farthest_in_Xr[kk] <- ith_observation$ith_neig_indices[which.max(kth_diss)]
 
-#' @title Cross validation for Gaussian process regression
-#' @description internal
-#' @keywords internal
-gprCv <- function(x, y, scaled, weights = NULL, p = 0.75, resampling = 10, group = NULL, noise.v = 0.001, retrieve = c("final.model", "none")){
-  
-  ## Create the resampling groups
-  if(is.null(group)){
-    nv <- floor((1-p)*nrow(x))
-    y.str <- quantile(y, probs = seq(0, 1, length = (nv+1)))
-    y.cut <- cut(y, unique(y.str), include.lowest = TRUE)
-    levels(y.cut) <- 1:length(y)
-    prob.g <- data.frame(orig.order = 1:length(y), prob.group = as.numeric (y.cut))
-    
-    rspi <- matrix(NA, nv, resampling)
-    mrspi <- matrix(NA, nrow(x) - nv, resampling)
-    colnames(rspi) <- colnames(mrspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", seq(1:nv), sep = "")
-    rownames(mrspi) <- paste("index", seq(1:nrow(mrspi)), sep = "")
-    
-    idxs <- 1:nrow(x)
-    for(jj in 1:resampling)
-    {
-      strs <- tapply(X = prob.g$orig.order, FUN = smpl, INDEX = prob.g$prob.group)
-      if(length(strs) < nv)
-      {
-        adds <- sample((1:length(y))[-strs], nv - length(strs))
-        strs <- c(strs, adds)
-      }
-      rspi[,jj]<- strs
-      mrspi[,jj]<- idxs[!idxs %in% strs]
-    }
-  }else{
-    ygr <- data.frame(y, grp = as.factor(as.character(group)), order.orig = 1:length(y))
-    lvls <- levels(ygr$grp)
-    nlv <- nlevels(ygr$grp)
-    # Compute means per group and make the stratified sampling based on that 
-    # vector of means
-    yg <- tapply(X = ygr$y, INDEX = ygr$grp, FUN = mean)
-    
-    nv <- floor((1 - p) * nlv)
-    y.str <- quantile(yg, probs = seq(0, 1, length = (nv+1)))
-    y.cut <- cut(yg, unique(y.str), include.lowest = TRUE)
-    levels(y.cut) <- paste("l_", 1:nlevels(y.cut), sep = "")
-    prob.g <- data.frame(orig.order = 1:length(yg), prob.group = factor(y.cut))
-    
-    rspi <- matrix(0, nv, resampling)
-    colnames(rspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", seq(1:nv), sep = "")
-    
-    listrspi <- mlistrspi <- NULL
-    for(jj in 1:resampling)
-    {
-      strs <- tapply(X = prob.g$orig.order, FUN = smpl, INDEX = prob.g$prob.group)
-      if(length(strs) < nv)
-      {
-        adds <- sample((1:nrow(prob.g))[-strs], nv - length(strs))
-        strs <- c(strs, adds)
-      }
-      
-      strs <- lvls[strs]  
-      
-      listrspi[[jj]] <- ygr$order.orig[ygr$grp %in% strs]
-      mlistrspi[[jj]] <- ygr$order.orig[!ygr$grp %in% strs]
-    }
-    
-    lensam <- lengths(listrspi)
-    mlensam <- lengths(mlistrspi)
-    rspi <- matrix(NA, max(lensam), resampling)
-    mrspi <- matrix(NA, max(mlensam), resampling)
-    colnames(rspi) <- colnames(mrspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", 1:nrow(rspi), sep = "")
-    rownames(mrspi) <- paste("index", 1:nrow(mrspi), sep = "")
-    idxs <- 1:nrow(x)
-    for(jj in 1:resampling)
-    {
-      ## ramdomly select the replacements for the missing indexes
-      ## replacements are necessary!
-      rspi[,jj] <- c(sample(listrspi[[jj]], max(lensam) - lensam[jj]), listrspi[[jj]])
-      mrspi[,jj] <- c(sample(mlistrspi[[jj]], max(mlensam) - mlensam[jj]), mlistrspi[[jj]])
-    }
-  }
-  
-  cvre <- pgpcv_cpp(X = x, 
-                    Y = y, 
-                    mindices = mrspi,
-                    pindices = rspi,
-                    noisev = noise.v,
-                    scale = scaled)
-  
-  val <- NULL
-  val$resamples <- rspi
-  val$cvResults <- data.frame(rmse.cv = mean(cvre$rmse.seg), st.rmse.cv = mean(cvre$st.rmse.seg), rmse.sd.cv = sd(cvre$rmse.seg), rsq.cv = mean(cvre$rsq.seg))
-  
-  if(retrieve == "final.model")
-  {
-    if(is.null(weights)){
-      x <- sweep(x, 1, weights, "*") #### MODIFIED
-      y <- y * weights
-    }
-    val$model <-   gprdp(X = x, Y = as.matrix(y), noisev = noise.v, scale = scaled)
-  }
-  return(val)
-}
+        if (!is.null(group)) {
+          i_k_group <- factor(ith_observation$ith_group[1:current_k])
+        } else {
+          i_k_group <- NULL
+        }
 
-# #' @title Standard deviation of columns
-# #' @description internal
-# #' @keywords internal
-# cSds <-  function(x){
-#   return(apply(x,2,sd))    
-# }
+        if (diss_usage == "weights") {
+          # Weights are defined according to a tricubic function
+          # as in Cleveland and Devlin (1988) and Naes and Isaksson (1990).
+          std_kth_diss <- kth_diss / max(kth_diss)
+          kth_weights <- (1 - (std_kth_diss^3))^3
+          kth_weights[which(kth_weights == 0)] <- 1e-04
+        } else {
+          kth_weights <- rep(1, current_k)
+        }
 
-#' @title Cross validation for PLS regression
-#' @description for internal use only!
-#' @keywords internal
-plsCv <- function(x, y, ncomp, 
-                  method = c("pls", "wapls1"),
-                  center = TRUE, scaled, 
-                  minF = 1,
-                  newX = matrix(0,1,1),
-                  weights = NULL, 
-                  p = 0.75, 
-                  resampling = 10, 
-                  group = NULL,
-                  retrieve = TRUE,
-                  .optimize = TRUE,
-                  max.iter = 1, tol = 1e-6)
-{
-  
-  if(min(ncol(x), nrow(x)) < floor(ncomp * (1 + p))) {ncomp <- (floor(min(ncol(x), nrow(x)) * p))-1} 
-  
-  #   smpl <- function(x){
-  #     if(length(x) == 1)
-  #       x <- c(x, x)
-  #     return(sample(x, size = 1))
-  #   }
-  
-  
-  if(is.null(group)){
-    nv <- floor((1-p)*nrow(x))
-    y.str <- quantile(y, probs = seq(0, 1, length = (nv+1)))
-    y.cut <- cut(y, unique(y.str), include.lowest = TRUE)
-    levels(y.cut) <- 1:length(y)
-    prob.g <- data.frame(orig.order = 1:length(y), prob.group = as.numeric (y.cut))
-    
-    rspi <- matrix(NA, nv, resampling)
-    mrspi <- matrix(NA, nrow(x) - nv, resampling)
-    colnames(rspi) <- colnames(mrspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", seq(1:nv), sep = "")
-    rownames(mrspi) <- paste("index", seq(1:nrow(mrspi)), sep = "")
-    
-    idxs <- 1:nrow(x)
-    for(jj in 1:resampling)
-    {
-      strs <- tapply(X = prob.g$orig.order, FUN = smpl, INDEX = prob.g$prob.group)
-      if(length(strs) < nv)
-      {
-        adds <- sample((1:length(y))[-strs], nv - length(strs))
-        strs <- c(strs, adds)
-      }
-      rspi[,jj]<- strs
-      mrspi[,jj]<- idxs[!idxs %in% strs]
-      
-    }
-  }else{
-    ygr <- data.frame(y, grp = as.factor(as.character(group)), order.orig = 1:length(y))
-    lvls <- levels(ygr$grp)
-    nlv <- nlevels(ygr$grp)
-    # Compute means per group and make the stratified sampling based on that 
-    # vector of means
-    yg <- tapply(X = ygr$y, INDEX = ygr$grp, FUN = mean)
-    
-    nv <- floor((1 - p) * nlv)
-    y.str <- quantile(yg, probs = seq(0, 1, length = (nv+1)))
-    y.cut <- cut(yg, unique(y.str), include.lowest = TRUE)
-    levels(y.cut) <- paste("l_", 1:nlevels(y.cut), sep = "")
-    prob.g <- data.frame(orig.order = 1:length(yg), prob.group = factor(y.cut))
-    
-    rspi <- matrix(0, nv, resampling)
-    colnames(rspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", seq(1:nv), sep = "")
-    
-    listrspi <- mlistrspi <- NULL
-    for(jj in 1:resampling)
-    {
-      strs <- tapply(X = prob.g$orig.order, FUN = smpl, INDEX = prob.g$prob.group)
-      if(length(strs) < nv)
-      {
-        adds <- sample((1:nrow(prob.g))[-strs], nv - length(strs))
-        strs <- c(strs, adds)
-      }
-      
-      strs <- lvls[strs]  
-      
-      listrspi[[jj]] <- ygr$order.orig[ygr$grp %in% strs]
-      mlistrspi[[jj]] <- ygr$order.orig[!ygr$grp %in% strs]
-    }
-    lensam <- lengths(listrspi)
-    mlensam <- lengths(mlistrspi)
-    rspi <- matrix(NA, max(lensam), resampling)
-    mrspi <- matrix(NA, max(mlensam), resampling)
-    colnames(rspi) <- colnames(mrspi) <- paste("Resample", seq(1:resampling), sep = "")
-    rownames(rspi) <- paste("index", 1:nrow(rspi), sep = "")
-    rownames(mrspi) <- paste("index", 1:nrow(mrspi), sep = "")
-    idxs <- 1:nrow(x)
-    for(jj in 1:resampling)
-    {
-      ## ramdomly select the replacements for the missing indexes
-      ## replacements are necessary!
-      rspi[,jj] <- c(sample(listrspi[[jj]], max(lensam) - lensam[jj]), listrspi[[jj]])
-      mrspi[,jj] <- c(sample(mlistrspi[[jj]], max(mlensam) - mlensam[jj]), mlistrspi[[jj]])
-    }
-    
-  }
-  
-  if(method == "wapls1" & retrieve & .optimize)
-  {
-    pls.c <- c(minF, ncomp)
-    seq.pls <- min(pls.c):max(pls.c)
-    sgr <- expand.grid(minF = seq.pls, maxF = seq.pls)
-    sgr <- as.matrix(sgr[sgr$minF < sgr$maxF,])
-    rownames(sgr) <- 1:nrow(sgr)
-    fmethod <- "completewapls1"
-  }else{
-    sgr <- matrix(0,0,0)
-    fmethod <- method
-  }
-  
-  cvre <- pplscv_cpp(X = x, 
-                     Y = as.matrix(y),
-                     scale = scaled,
-                     method = fmethod,
-                     mindices = mrspi,
-                     pindices = rspi,
-                     minF = minF,
-                     ncomp = ncomp,
-                     newX = newX,
-                     maxiter = max.iter, 
-                     tol = tol,
-                     waplsgrid = sgr)
-  
-  val <- NULL
-  val$resamples <- rspi
-  if(method == "pls"){
-    val$cvResults <- data.frame(nPLS = 1:ncomp, rmse.cv = rowMeans(cvre$rmse.seg), st.rmse.cv = rowMeans(cvre$st.rmse.seg), rmse.sd.cv = cSds(t(cvre$rmse.seg)), rsq.cv = rowMeans(cvre$rsq.seg))
-    bestpls.c <- val$cvResults$nPLS[which(val$cvResults$rmse.cv == min(val$cvResults$rmse.cv))]
-    val$bestpls.c <- bestpls.c
-    
-    if(retrieve)
-    {
-      if(!is.null(weights)){
-        x <- sweep(x, 1, weights, "*")  ### MODIFIED
-        y <- y * weights
-      }
-      if(.optimize)
-      {
-        val$models <- fopls(X = x, 
-                            Y = y, 
-                            scale = scaled, 
-                            ncomp = bestpls.c,
-                            maxiter = max.iter, 
-                            tol = tol)
+        # local fit
+        i_k_pred <- fit_and_predict(
+          x = i_k_xr,
+          y = i_k_yr,
+          pred_method = method$method,
+          scale = scale,
+          pls_c = method$pls_c,
+          weights = kth_weights,
+          newdata = i_k_xu,
+          CV = is_local_cv,
+          tune = control$tune_locally,
+          group = i_k_group,
+          p = control$p,
+          number = control$number,
+          noise_variance = method$noise_variance,
+          range_prediction_limits = control$range_prediction_limits,
+          pls_max_iter = 1,
+          pls_tol = 1e-6
+        )
+
+        ith_pred_results$pred[kk] <- i_k_pred$prediction
+
+        selected_pls <- NULL
+        if (is_local_cv) {
+          if (control$tune_locally) {
+            best_row <- which.min(i_k_pred$validation$cv_results$rmse_cv)
+          } else {
+            best_row <- ifelse(method$method == "pls", method$pls_c, 1)
+          }
+
+          if (method$method == "pls") {
+            ith_pred_results$npls[kk] <- i_k_pred$validation$cv_results$npls[best_row]
+            selected_pls <- ith_pred_results$npls[kk]
+          }
+          if (method$method == "wapls") {
+            ith_pred_results$min_pls[kk] <- i_k_pred$validation$cv_results$min_component[best_row]
+            ith_pred_results$max_pls[kk] <- i_k_pred$validation$cv_results$max_component[best_row]
+            selected_pls <- i_k_pred$validation$cv_results[best_row, 1:2]
+          }
+
+          ith_pred_results$loc_rmse_cv[kk] <- i_k_pred$validation$cv_results$rmse_cv[best_row]
+          ith_pred_results$loc_st_rmse_cv[kk] <- i_k_pred$validation$cv_results$st_rmse_cv[best_row]
+        } else {
+          if (method$method == "pls") {
+            ith_pred_results$npls[kk] <- method$pls_c
+            selected_pls <- ith_pred_results$npls[kk]
+          }
+          if (method$method == "wapls") {
+            ith_pred_results$min_pls[kk] <- method$pls_c[[1]]
+            ith_pred_results$max_pls[kk] <- method$pls_c[[2]]
+            selected_pls <- method$pls_c
+          }
+        }
+
+        if (is_nnv_val) {
+          if (!is.null(group)) {
+            out_group <- which(i_k_group == i_k_group[[ith_observation$local_index_nearest]])
+          } else {
+            out_group <- ith_observation$local_index_nearest
+          }
+
+          nearest_pred <- fit_and_predict(
+            x = i_k_xr[-out_group, ],
+            y = i_k_yr[-out_group, , drop = FALSE],
+            pred_method = method$method,
+            scale = scale,
+            pls_c = selected_pls,
+            noise_variance = method$noise_variance,
+            newdata = i_k_xr[ith_observation$local_index_nearest, , drop = FALSE],
+            CV = FALSE,
+            tune = FALSE,
+            range_prediction_limits = control$range_prediction_limits,
+            pls_max_iter = 1,
+            pls_tol = 1e-6
+          )$prediction
+
+          ith_pred_results$y_nearest_pred[kk] <- nearest_pred / kth_weights[1]
+        }
       } else {
-        val$models <- fopls(X = x, 
-                            Y = as.matrix(y), 
-                            scale = scaled, 
-                            ncomp = ncomp,
-                            maxiter = max.iter, 
-                            tol = tol)
-        
+        ith_k_diss <- ith_pred_results$k_diss[kk]
+        ith_pred_results[kk, ] <- ith_pred_results[kk - 1, ]
+        ith_pred_results$rep[kk] <- 1
+        ith_pred_results$k_diss[kk] <- ith_k_diss
       }
     }
-  }
-  
-  if(method == "wapls1" & retrieve & !.optimize){
-    val$compweights <- cvre$compweights
-    val$cvResults <- data.frame(minF = minF, maxF = ncomp, rmse.cv = mean(cvre$rmse.seg), st.rmse.cv = mean(cvre$st.rmse.seg), rmse.sd.cv = sd(cvre$rmse.seg), rsq.cv = mean(cvre$rsq.seg))
-    #bestpls.c <- val$cvResults$nPLS[which(val$cvResults$rmse.cv == min(val$cvResults$rmse.cv))]
-    #val$bestpls.c <- bestpls.c
-    
-    if(!is.null(weights)){
-      x <- sweep(x, 1, weights, "*")  ### MODIFIED
-      y <- y * weights
-    } 
-    val$models <- fopls(X = x, 
-                        Y = as.matrix(y), 
-                        scale = scaled, 
-                        ncomp = ncomp,
-                        maxiter = max.iter, 
-                        tol = tol)
-  }
-  
-  if(method == "wapls1" & retrieve & .optimize){
-    
-    val$cvResults <- data.frame(sgr, rmse.cv = rowMeans(cvre$rmse.seg), st.rmse.cv = rowMeans(cvre$st.rmse.seg), rmse.sd.cv = cSds(t(cvre$rmse.seg)), rsq.cv = rowMeans(cvre$rsq.seg))
-    opmls <- which.min(val$cvResults$rmse.cv)
-    val$bestpls.c$minF <- val$cvResults$minF[opmls]
-    val$bestpls.c$maxF <- val$cvResults$maxF[opmls]
-    val$compweights <- cvre$compweights
-    
-    
-    if(!is.null(weights)){
-      x <- sweep(x, 1, weights, "*")  ### MODIFIED
-      y <- y * weights
+
+    if (verbose) {
+      if (kk == nrow(ith_pred_results) & i != n_iter) {
+        cat("\r", to_erase, "\r")
+      }
+
+      if (i == n_iter) {
+        cat("\n")
+      }
+      # do not use close() (it prints a new line)
+      ## close(pb)
     }
-    
-    tmp.compweights <- val$compweights[val$bestpls.c$minF:val$bestpls.c$maxF]
-    val$compweights[] <- 0
-    tmp.compweights <- tmp.compweights/sum(tmp.compweights)
-    val$compweights[val$bestpls.c$minF:val$bestpls.c$maxF] <- tmp.compweights
-    
-    val$models <- fopls(X = x, 
-                        Y = as.matrix(y), 
-                        scale = scaled, 
-                        ncomp = ncomp,
-                        maxiter = max.iter, 
-                        tol = tol)
+    list(
+      results = ith_pred_results,
+      additional_results = additional_results
+    )
   }
-  return(val)
-}
 
+  iteration_order <- sapply(pred_obs,
+    FUN = function(x) x$results$o_index[1]
+  )
 
-#' @title Internal function for computing the weights of the PLS components necessary for weighted average PLS 
-#' @description internal
-#' @keywords internal
-#' @param plsO either an object returned by the \code{plsCv} function or an object as returned by the \code{opls} function which contains a pls model.
-#' @param orgX the original spectral \code{matrix} which was used for calibrating the pls model.
-#' @param type type of weight to be computed. The only available option (for the moment) is \code{"w1"}. See details on the \code{mbl} function where it is explained how \code{"w1"} is computed whitin the \code{"wapls1"} regression.
-#' @param newX a \code{vector} of a new spectral sample. When "w1" is selected, newX must be specified.
-#' @param pls.c a \code{vector} of length 2 which contains both the minimum and maximum number of PLS components for which the weights must be computed.
-#' @return \code{wapls.weights} returns a \code{vector} of weights for each PLS component specified
-#' @author Leonardo Ramirez-Lopez and Antoine Stevens
+  pred_obs <- pred_obs[order(iteration_order, decreasing = FALSE)]
 
-wapls.weights <- function(plsO, orgX, type = "w1", newX = NULL, pls.c){
-  
-  if(!is.null(newX)){newX <- t(as.vector(newX))}
-  
-  if(!is.null(plsO$models))
-  {
-    rmse.cv <- plsO$cvResults$rmse.cv
-    plsO <- plsO$models
-    is_plsCv <- TRUE
-  } else is_plsCv <-FALSE
-  if(max(pls.c) > max(plsO$ncomp))
-    stop("the maximum number of PLS components specified in pls.c exceeds the number of PLS components contained in plsO!")
-  if(type == "w1" & is.null(newX))
-    stop("newX is missng! When type = 'w2', a vector of a new spectral sample must be specified")
-  if(type == "w1" & (length(newX) != ncol(orgX)))
-    stop("the length of the vector newX does not match with the number of variables of orgX")
-  if(length(pls.c) != 2)
-    stop("'pls.c' must be a vector of length 2 which specifies both the minimum and the maximum number of PLS components")
-  if(pls.c[[1]] > pls.c[[2]])
-    stop("for the vector of 'pls.c' the first value must be the minimum number of PLS components")
-  
-  minF <- pls.c[[1]]
-  maxF <- pls.c[[2]]
-  
-  
-  whgt <- waplswCpp(projectionm = plsO$projectionM, 
-                    xloadings = plsO$X.loadings,
-                    coefficients = plsO$coefficients,
-                    newX = newX,
-                    minF = minF, 
-                    maxF = maxF, 
-                    scale = ifelse(nrow(plsO$transf$Xscale) == 1, TRUE, FALSE),
-                    Xcenter = plsO$transf$Xcenter,
-                    Xscale = plsO$transf$Xscale)[1,]
-  
-  return(whgt)
-}
+  results_table <- do.call("rbind", lapply(pred_obs,
+    FUN = function(x) x$results
+  ))
 
+  if (".local" %in% names(input_dots) & diss_method %in% ortho_diss_methods) {
+    diss_xr_xu <- do.call(
+      "cbind",
+      lapply(iteration_order,
+        FUN = function(x, m, ii) {
+          idc <- x[[ii]]$additional_results$ith_neig_indices
+          d <- x[[ii]]$additional_results$ith_neigh_diss
+          m[idc] <- d
+          m
+        },
+        x = pred_obs,
+        m = matrix(NA, nrow(Xr), 1)
+      )
+    )
+    class(diss_xr_xu) <- c("local_ortho_diss", "matrix")
+    dimnames(diss_xr_xu) <- list(
+      paste0("Xr_", 1:nrow(diss_xr_xu)),
+      paste0("Xu_", 1:ncol(diss_xr_xu))
+    )
 
-#' @title iterator that re-organize and subset a matrix based on dissimilarity matrix (used in mbl)
-#' @description internal
-#' @param x an input \code{matrix}
-#' @param Dx a (symmetric) cross-dissimilarity \code{matrix} of x
-#' @param D a distance \code{matrix} between x and another matrix
-#' @param k \code{matrix} number of neighbours (rows)  to keep
-#' @param by \code{'column'} or \code{'row'}
-#' @return an object of \code{class} iterator giving a \code{list} with (a) a subset of the input \code{matrix} with rows re-arranged in the order 
-#' of the distance \code{vector}, (b) the distance \code{vector}, (c) the order of the distance \code{vector}
-#' @details isubset will look at the order of knn in each col of D and re-organize the rows of x accordingly
-#' @author Antoine Stevens
-#' @keywords internal
-isubset <- function(x, Dx = NULL, D, k, by = "column") {
-  
-  it <- iter(D, by= by)
-  k <- iter(k, by = "row")
-  nextEl <- function() {
-    d <- nextElem(it)       
-    kk <- nextElem(k)       
-    n <- order(d)
-    n1 <- n[1:max(kk)]
-    if(is.null(Dx))
-      list(x=x[n1,],d=d,index=n,k=c(kk)) # resulting iterator
-    else
-      list(x=x[n1,],dx=Dx[n1,n1],d=d,index=n,k=c(kk))
+    neighborhoods$neighbors <- do.call(
+      "cbind", lapply(iteration_order,
+        FUN = function(x, m, ii) {
+          idc <- x[[ii]]$additional_results$ith_neig_indices
+          m[1:length(idc)] <- idc
+          m
+        },
+        x = pred_obs,
+        m = matrix(NA, max(results_table$k), 1)
+      )
+    )
   }
-  
-  obj <- list(nextElem=nextEl)
-  class(obj) <- c("isubset", "abstractiter", "iter")
-  obj
-}
 
-#' @title Standard deviation of columns
-#' @description For internal use only!
-#' @keywords internal
-cSds <-  function(x){
-  return(as.vector(colSds(x)))
+  out <- c(
+    if (is.null(Yu)) {
+      "yu_obs"
+    },
+    if (all(is.na(results_table$k_original))) {
+      "k_original"
+    },
+    if (!(validation_type %in% c("NNv", "both"))) {
+      "y_nearest_pred"
+    },
+    if (method$method != "wapls") {
+      c("min_pls", "max_pls")
+    },
+    if (method$method != "pls") {
+      "npls"
+    },
+    if (!(validation_type %in% c("local_cv", "both"))) {
+      c("loc_rmse_cv", "loc_st_rmse_cv")
+    },
+    "rep"
+  )
+
+  results_table[, (out) := NULL]
+  if (!is.null(k_diss)) {
+    param <- "k_diss"
+    results_table <- lapply(get(param),
+      FUN = function(x, sel, i) x[x[[sel]] == i, ],
+      x = results_table,
+      sel = param
+    )
+    names(results_table) <- paste0("k_diss_", k_diss)
+    p_bounded <- sapply(results_table,
+      FUN = function(x, k_range) {
+        sum(x$k_original <= k_range[1] | x$k_original >= k_range[2])
+      },
+      k_range = k_range
+    )
+    col_ks <- data.table(
+      k_diss = k_diss,
+      p_bounded = paste0(round(100 * p_bounded / nrow(Xu), 3), "%")
+    )
+  } else {
+    param <- "k"
+    results_table <- lapply(get(param),
+      FUN = function(x, sel, i) x[x[[sel]] == i, ],
+      x = results_table,
+      sel = param
+    )
+    names(results_table) <- paste0("k_", k)
+    col_ks <- data.table(k = k)
+  }
+
+  if (validation_type %in% c("NNv", "both")) {
+    nn_stats <- function(x) {
+      nn_rmse <- (mean((x$y_nearest - x$y_nearest_pred)^2))^0.5
+      nn_st_rmse <- nn_rmse / diff(range(x$y_nearest))
+      nn_rsq <- (cor(x$y_nearest, x$y_nearest_pred))^2
+      c(nn_rmse = nn_rmse, nn_st_rmse = nn_st_rmse, nn_rsq = nn_rsq)
+    }
+
+    loc_nn_res <- do.call("rbind", lapply(results_table, FUN = nn_stats))
+    loc_nn_res <- cbind(col_ks,
+      rmse = loc_nn_res[, "nn_rmse"],
+      st_rmse = loc_nn_res[, "nn_st_rmse"],
+      r2 = loc_nn_res[, "nn_rsq"]
+    )
+  } else {
+    loc_nn_res <- NULL
+  }
+
+  if (validation_type %in% c("local_cv", "both")) {
+    mean_loc_res <- function(x) {
+      mean_loc_rmse <- mean(x$loc_rmse_cv)
+      mean_loc_st_rmse <- mean(x$loc_st_rmse_cv)
+      c(loc_rmse = mean_loc_rmse, loc_st_rmse = mean_loc_st_rmse)
+    }
+    loc_res <- do.call("rbind", lapply(results_table, mean_loc_res))
+    loc_res <- cbind(col_ks,
+      rmse = loc_res[, "loc_rmse"],
+      st_rmse = loc_res[, "loc_st_rmse"]
+    )
+  } else {
+    loc_res <- NULL
+  }
+
+  if (!is.null(Yu)) {
+    for (i in 1:length(results_table)) {
+      results_table[[i]]$yu_obs <- Yu
+    }
+    yu_stats <- function(x) {
+      yu_rmse <- mean((x$yu_obs - x$pred)^2, na.rm = TRUE)^0.5
+      yu_st_rmse <- yu_rmse / diff(range(x$yu_obs, na.rm = TRUE))
+      yu_rsq <- cor(x$yu_obs, x$pred, use = "complete.obs")^2
+      c(yu_rmse = yu_rmse, yu_st_rmse = yu_st_rmse, yu_rsq = yu_rsq)
+    }
+    pred_res <- do.call("rbind", lapply(results_table, yu_stats))
+    pred_res <- cbind(col_ks,
+      rmse = pred_res[, "yu_rmse"],
+      st_rmse = pred_res[, "yu_st_rmse"],
+      r2 = pred_res[, "yu_rsq"]
+    )
+  } else {
+    pred_res <- NULL
+  }
+
+  if ("local_ortho_diss" %in% class(diss_xr_xu)) {
+    diss_method <- paste0(diss_method, " (locally computed)")
+  }
+
+  if (control$return_dissimilarity) {
+    diss_list <- list(
+      diss_method = diss_method,
+      diss_xr_xu = diss_xr_xu
+    )
+    if (has_projection) {
+      diss_list$global_projection <- diss_xr_xu_projection
+    }
+  } else {
+    diss_list <- NULL
+  }
+
+  colnames(neighborhoods$neighbors) <- paste0("Xu_", 1:nrow(Xu))
+  rownames(neighborhoods$neighbors) <- paste0("k_", 1:nrow(neighborhoods$neighbors))
+  results_list <- list(
+    call = f_call,
+    cntrl_param = control,
+    dissimilarities = diss_list,
+    Xu_neighbors = list(
+      neighbors = neighborhoods$neighbors,
+      neighbors_diss = neighborhoods$neighbors_diss
+    ),
+    n_predictions = nrow(Xu),
+    gh = neighborhoods$gh,
+    validation_results = list(
+      local_cross_validation = loc_res,
+      nearest_neighbor_validation = loc_nn_res,
+      Yu_prediction_statistics = pred_res
+    ),
+    results = results_table,
+    documentation = documentation
+  )
+
+  attr(results_list, "call") <- f_call
+  class(results_list) <- c("mbl", "list")
+
+  results_list
 }

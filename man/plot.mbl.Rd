@@ -4,58 +4,72 @@
 \alias{plot.mbl}
 \title{Plot method for an object of class \code{mbl}}
 \usage{
-\method{plot}{mbl}(x, g = c("validation", "pca"), param = "rmse", pcs = c(1,2), ...)
+\method{plot}{mbl}(x, g = c("validation", "gh"), param = "rmse", pls_c = c(1,2), ...)
 }
 \arguments{
 \item{x}{an object of class \code{mbl} (as returned by \code{mbl}).}
 
-\item{g}{a character \code{vector} indicating what results shall be plotted. Options are: "validation" (for plotting the validation results) and/or "pca" (for plotting the principal components).}
+\item{g}{a character vector indicating what results shall be plotted.
+Options are: \code{"validation"} (for plotting the validation results) and/or
+\code{"gh"} (for plotting the pls scores used to compute the GH distance.
+See details).}
 
-\item{param}{one of the following options "rmse", "st.rmse" or "r2". The respective validation statistic is then plotted. It is only available if \code{"validation"} is specified in the \code{g} argument.}
+\item{param}{a character string indicating what validation statistics shall be
+plotted. The following options are available: \code{"rmse"}, \code{"st_rmse"}
+or \code{"r2"}. These options only available if the \code{mbl} object contains
+validation results.}
 
-\item{pcs}{a vector of length one or two indicating the principal components to be plotted. Default is \code{c(1, 2)}. It is only available if \code{"pca"} is specified in the \code{g} argument.}
+\item{pls_c}{a numeric vector of length one or two indicating the pls factors to be
+plotted. Default is \code{c(1, 2)}. It is only available if \code{"gh"} is
+specified in the \code{g} argument.}
 
-\item{...}{some arguments to be passed to methods as graphical parameters.}
+\item{...}{some arguments to be passed to the plot methods.}
 }
 \description{
 Plots the content of an object of class \code{mbl}
 }
+\details{
+For plotting the pls scores from the pls score matrix (of more than one column),
+this matrix is first transformed from the Euclidean space to the Mahalanobis
+space. This is done by multiplying the score matrix by the root square of
+its covariance matrix. The root square of this matrix is estimated using a
+singular value decomposition.
+}
 \examples{
-\dontrun{
-require(prospectr)
+\donttest{
+library(prospectr)
 
 data(NIRsoil)
 
-Xu <- NIRsoil$spc[!as.logical(NIRsoil$train),]
+Xu <- NIRsoil$spc[!as.logical(NIRsoil$train), ]
 Yu <- NIRsoil$CEC[!as.logical(NIRsoil$train)]
 Yr <- NIRsoil$CEC[as.logical(NIRsoil$train)]
-Xr <- NIRsoil$spc[as.logical(NIRsoil$train),]
+Xr <- NIRsoil$spc[as.logical(NIRsoil$train), ]
 
-Xu <- Xu[!is.na(Yu),]
+Xu <- Xu[!is.na(Yu), ]
 Yu <- Yu[!is.na(Yu)]
 
-Xr <- Xr[!is.na(Yr),]
-Yr <- Yr[!is.na(Yr)] 
+Xr <- Xr[!is.na(Yr), ]
+Yr <- Yr[!is.na(Yr)]
 
-ctrl <- mblControl(sm = "cor", ws = 51, 
-                   pcSelection = list("cumvar", 0.999), 
-                   valMethod = c("NNv"), 
-                   scaled = TRUE, center = TRUE)
+ctrl <- mbl_control(validation_type = "NNv")
 
-ex1 <- mbl(Yr = Yr, Xr = Xr, Yu = NULL, Xu = Xu,
-           mblCtrl = ctrl,
-           dissUsage = "none", 
-           k = seq(30, 250, 30), 
-           method = "wapls1",
-           plsC = c(7, 20))
+ex_1 <- mbl(
+  Yr = Yr, Xr = Xr, Xu = Xu,
+  diss_method = "cor",
+  diss_usage = "none",
+  gh = TRUE,
+  mblCtrl = ctrl,
+  k = seq(50, 250, 30)
+)
 
-plot(ex1)
+plot(ex_1)
+plot(ex_1, g = "gh", pls_c = c(2, 3))
 }
-}
-\author{
-Leonardo Ramirez-Lopez and Antoine Stevens
 }
 \seealso{
 \code{\link{mbl}}
 }
-
+\author{
+Leonardo Ramirez-Lopez and Antoine Stevens
+}

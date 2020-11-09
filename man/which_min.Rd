@@ -4,24 +4,21 @@
 \alias{which_min}
 \title{A function to compute row-wise index of minimum values of a square distance matrix}
 \usage{
-which_min(X,cores)
+which_min(X)
 }
 \arguments{
-\item{X}{a square \code{matrix} of distance}
-
-\item{cores}{number of cores used to run the computation}
+\item{X}{a square matrix of distances}
 }
 \value{
-a \code{vector} of the indices of the minimum value in each row of the input \code{matrix}
+a vector of the indices of the minimum value in each row of the input matrix
 }
 \description{
 For internal use only
 }
 \details{
-Used internally to find the nearest neighbours
+Used internally to find the nearest neighbors
 }
 \author{
 Antoine Stevens
 }
 \keyword{internal}
-

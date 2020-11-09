@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{an object of class \code{mbl} (as returned by the \code{mbl} function).}
 
-\item{...}{arguments to be passed to methods (not yet functional).}
+\item{...}{arguments to be passed to methods (not functional).}
 }
 \description{
 Prints the content of an object of class \code{mbl}
@@ -17,4 +17,4 @@ Prints the content of an object of class \code{mbl}
 \author{
 Leonardo Ramirez-Lopez and Antoine Stevens
 }
-
+\keyword{internal}
