@@ -427,19 +427,19 @@ ev[["ed"]] <- sim_eval(ed$dissimilarity, side_info = Ciso)
 ev[["cosd"]] <- sim_eval(cosd$dissimilarity, side_info = Ciso)
 ev[["sinfd"]] <- sim_eval(sinfd$dissimilarity, side_info = Ciso)
 
-## ---- results = 'hide', eval = TRUE, echo = FALSE-----------------------------
-fig_cap <- paste("Comparison between observations and their corresponding 
-                 nearest neighbor (1-NN)","observation in terms of Tocal Carbon (Ciso). The 1-NNs",
-                 "are retrieved with the", 
-                 "following dissimilarity merics:",
-                 "pcad: PC dissimilarity with default settings (variance-based of components);",
-                 "plsd: PLS dissimilarity with default settings (variance-based of components);",
-                 "o_pcad: PC dissimilarity with optimal selection of components;",  
-                 "o_plsd: PLS dissimilarity with optimal selection of components;",  
-                 "cd: Correlation dissimilarity;",  
-                 "mcd: Moving window correlation dissimilarity;",  
-                 "ed: Euclidean dissimilarity;",  
-                 "sinfd: Spectral information divergence/dissimilarity.")
+## ----fcaption, results = 'hide', eval = TRUE, echo = FALSE--------------------
+fig_cap <- paste("Comparison between observations and their corresponding",
+      "nearest neighbor (1-NN)","observation in terms of Total Carbon (Ciso). The 1-NNs",
+      "are retrieved with the", 
+      "following dissimilarity metrics:",
+      "pcad: PC dissimilarity with default settings (variance-based of components);",
+      "plsd: PLS dissimilarity with default settings (variance-based of components);",
+      "o-pcad: PC dissimilarity with optimal selection of components;",  
+      "o-plsd: PLS dissimilarity with optimal selection of components;",  
+      "cd: Correlation dissimilarity;",  
+      "mcd: Moving window correlation dissimilarity;",  
+      "ed: Euclidean dissimilarity;",  
+      "sinfd: Spectral information divergence.", collapse = "")
 
 ## ----results = 'hide', eval = TRUE, echo = FALSE------------------------------
 comparisons <- lapply(names(ev), 

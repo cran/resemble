@@ -4,12 +4,7 @@
 \name{resemble-package}
 \alias{resemble-package}
 \alias{resemble}
-\title{Overview of the functions in the resemble package
-#' @references
-Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematte, J.A.M.,
-Scholten, T. 2013a. The spectrum-based learner: A new local approach for
-modeling soil vis-NIR spectra of complex data sets. Geoderma 195-196,
-268-279.}
+\title{Overview of the functions in the resemble package}
 \description{
 \ifelse{html}{\out{<a href='https://www.tidyverse.org/lifecycle/#maturing'><img src='figures/lifecycle-maturing.svg' alt='Maturing lifecycle'></a>}}{\strong{Maturing}}
 
@@ -18,7 +13,7 @@ Functions for memory-based learning
 \if{html}{\figure{logo.png}{options: align='right' alt='logo' width='120'}}
 }
 \details{
-This is the version \code{2.0} (\code{'gordillo'}) of the package. It
+This is the version \code{2.1} (\code{'piapia'}) of the package. It
 implements a number of \code{R} functions useful for
 modeling complex spectral spectra (e.g. NIR, IR).
 The package includes functions for dimensionality reduction,
@@ -63,6 +58,12 @@ Other supplementary functions:
   \item{\code{\link{plot.ortho_projection}}}
   }
 }
+\references{
+Ramirez-Lopez, L., Behrens, T., Schmidt, K., Stevens, A., Dematte, J.A.M.,
+Scholten, T. 2013a. The spectrum-based learner: A new local approach for
+modeling soil vis-NIR spectra of complex data sets. Geoderma 195-196,
+268-279.
+}
 \seealso{
 Useful links:
 \itemize{
@@ -79,12 +80,15 @@ Authors:
 
 \item Antoine Stevens (\href{https://orcid.org/0000-0002-1588-7519}{ORCID})
 
+\item Claudio Orellano 
+
 \item Raphael Viscarra Rossel (\href{https://orcid.org/0000-0003-1540-4748}{ORCID})
+
+\item Zefang Shen
 
 \item Craig Lobsey (\href{https://orcid.org/0000-0001-5416-8640}{ORCID})
 
 \item Alex Wadoux (\href{https://orcid.org/0000-0001-7325-9716}{ORCID})
 
-\item Timo Breure (\href{https://orcid.org/0000-0001-5695-8064}{ORCID})
 }
 }
