@@ -9,18 +9,18 @@
 
 <!-- badges: end -->
 
-_Last update: 26.11.2021_
+_Last update: 30.08.2022_
 
 <em><p align="right"> Think Globally, Fit Locally (Saul and Roweis, 2003) </p></em>
 
 ## About
 The `resemble` package provides high-performing functionality for 
-data-driven modeling (including local modeling), nearest neighbor search and 
+data-driven modeling (including local modeling), nearest-neighbor search and 
 orthogonal projections in spectral data.
 
 ## Vignette
 A new vignette for `resemble` explaining its core functionality is available 
-at: https://CRAN.R-project.org/package=prospectr/vignettes/prospectr.html
+at: https://CRAN.R-project.org/package=prospectr/vignettes/vignette.html
 
 ## Core functionality 
 
@@ -92,6 +92,13 @@ using [`devtools`](https://CRAN.R-project.org/package=devtools):
 ```
 devtools::install_github("l-ramirez-lopez/resemble")
 ```
+
+NOTE: in some MAC Os it is still recommended to install `gfortran` and `clang`
+from [here](https://cran.r-project.org/bin/macosx/tools/). Even for R >= 4.0. 
+For more info, check this [issue](https://github.com/tidyverts/fable/issues/193).  
+
+
+
 
 ## Example
 
@@ -185,9 +192,29 @@ Simply type and you will get the info you need:
 citation(package = "resemble")
 ```
 
-## News
+## News: Memory based learnig (MBL) and `resemble`
+
+* 2022.03: [Ng et al., 2022](https://www.sciencedirect.com/science/article/pii/S2667006222000107)
+uses MBL (implemented in `resemble`) to asses the feasibility 
+of quantifying a number of soil properties from IR spectra. They also show that
+MBL achieved better accuracy than [Cubist regression](https://odsc.medium.com/balancing-interpretability-and-predictive-power-with-cubist-models-in-r-858d2c936b79).
+
+* 2022.02: [Li et al., 2022](https://www.authorea.com/users/308848/articles/539538-strategy-of-efficient-estimation-of-soil-organic-content-at-the-local-scale-based-on-the-national-spectral-database?commit=e628e3487f23c8cc6fc19199e956dea9c5aae23c)
+show how useful the combination of MBL and spiking (implemented in `resemble`) 
+can be to accurately predict soil properties from NIR data in China.
+
+* 2021.12: [Yu et al., 2022](https://www.mdpi.com/2072-4292/14/6/1303) uses MBL 
+with External Parameter Orthogonalization to predict soil properties in in the 
+field. 
+
+* 2021.10: [In this paper](https://soil.copernicus.org/articles/7/693/2021/) we use MBL 
+to predict soil properties in Africa. 
+
+* 2020.08: Charlotte Rivard shows how to use MBL in IR spectroscopy 
+[here](https://whrc.github.io/Soil-Predictions-MIR/).
+
 * 2020.04: [Tsakiridis et al. (2020)](https://www.sciencedirect.com/science/article/abs/pii/S0016706119308870?via%3Dihub), 
-used the optmal principal components dissimilarity method implemented in `resemble` in combination with convolutional neural networks for simultaneous prediction of soil properties from vis-NIR spectra.
+used the optimal principal components dissimilarity method implemented in `resemble` in combination with convolutional neural networks for simultaneous prediction of soil properties from vis-NIR spectra.
 
 * 2019-04: [Tziolas et al. (2019)](https://www.sciencedirect.com/science/article/abs/pii/S0016706118307006), used
 `resemble` to investigate on improved MBL methods for quantitative predictions 
@@ -197,10 +224,9 @@ of soil properties using NIR spectroscopy and geographical information.
 compared several machine learning methods for predictive soil spectroscopy and 
 show that MBL `resemble` offers highly competive results.
 
-* 2020.01: [Sanderman et al., (2020)](https://acsess.onlinelibrary.wiley.com/doi/epdf/10.1002/saj2.20009) used `resemble` for the prediction of soil health indicatorsin the United States.
+* 2020.01: [Sanderman et al., (2020)](https://scholar.google.ch/scholar?cluster=8189603827145687468&hl=en&as_sdt=0,5&as_vis=1) used `resemble` for the prediction of soil health indicatorsin the United States.
 
-* 2019-03: Another paper using `resemble`... I published a [scientific paper](https://onlinelibrary.wiley.com/doi/10.1111/ejss.12752) were we used 
-memory-based learning (MBL) for digital soil mapping. Here we use MBL to remove 
+* 2019-03: I published a [scientific paper](https://scholar.google.com/scholar?cluster=1892507175331927677&hl=en&as_sdt=2005&sciodt=0,5&as_ylo=2022) were we used memory-based learning (MBL) for digital soil mapping. Here we use MBL to remove 
 local calibration outliers rather than using this approach to overcome the typical 
 complexity of large spectral datasets. (Ramirez‐Lopez, L., Wadoux, A. C.,
 Franceschini, M. H. D., Terra, F. S., Marques, K. P. P., Sayão, V. M., & 
