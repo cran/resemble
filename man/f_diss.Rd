@@ -40,12 +40,12 @@ dissimilarity measures (a.k.a spectral angle mapper).
 }
 \details{
 The results obtained for Euclidean dissimilarity are equivalent to those
-returned by the [stats::dist()] function, but are scaled
+returned by the \code{\link[stats:dist]{stats::dist()}} function, but are scaled
 differently. However, \code{f_diss} is considerably faster (which can be
 advantageous when computing dissimilarities for very large matrices). The
 final scaling of the dissimilarity scores in \code{f_diss} where
 the number of variables is used to scale the squared dissimilarity scores. See
-the examples section for a comparison between [stats::dist()] and
+the examples section for a comparison between \code{\link[stats:dist]{stats::dist()}} and
 \code{f_diss}.
 
 In the case of both the Euclidean and Mahalanobis distances, the scaled
@@ -64,11 +64,11 @@ is done by using a factorization of the inverse covariance matrix as
 \mjeqn{M^{-1} = W^{T}W}{M^-1 = W^TW}, where \mjeqn{M}{M} is merely the square root of
 \mjeqn{M^{-1}}{M^{-1}} which can be found by using a singular value decomposition.
 
-Note that when attempting to compute the Mahalanobis distance on a data set
+Note that when attempting to compute the Mahalanobis distance on a dataset
 with highly correlated variables (i.e. spectral variables) the
 variance-covariance matrix may result in a singular matrix which cannot be
 inverted and therefore the distance cannot be computed.
-This is also the case when the number of observations in the data set is
+This is also the case when the number of observations in the dataset is
 smaller than the number of variables.
 
 For the computation of the Mahalanobis distance, the mentioned method is

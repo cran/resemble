@@ -8,12 +8,12 @@ sim_eval(d, side_info)
 }
 \arguments{
 \item{d}{a symmetric matrix of dissimilarity scores between observations of
-a given data set. Alternatively, a vector of with the dissimilarity
+a given dataset. Alternatively, a vector of with the dissimilarity
 scores of the lower triangle (without the diagonal values) can be used
 (see details).}
 
 \item{side_info}{a matrix containing the side information corresponding to
-the observations in the data set from which the dissimilarity matrix was
+the observations in the dataset from which the dissimilarity matrix was
 computed. It can be either a numeric matrix with one or multiple
 columns/variables or a matrix with one character variable (discrete variable).
 If it is numeric, the root mean square of differences is used for assessing
@@ -24,13 +24,13 @@ variable, then the kappa index is used. See details.}
 \value{
 \code{sim_eval} returns a list with the following components:
 \itemize{
- \item{"\code{eval}}{ either the RMSD (and the correlation coefficient) or
- the kappa index}
- \item{\code{first_nn}}{ a matrix containing the original side
- informative variable in the first half of the columns, and the side
- informative values of the corresponding nearest neighbors in the second half
- of the columns.}
- }
+\item{"\code{eval}}{ either the RMSD (and the correlation coefficient) or
+the kappa index}
+\item{\code{first_nn}}{ a matrix containing the original side
+informative variable in the first half of the columns, and the side
+informative values of the corresponding nearest neighbors in the second half
+of the columns.}
+}
 }
 \description{
 \loadmathjax
@@ -38,7 +38,7 @@ variable, then the kappa index is used. See details.}
 \ifelse{html}{\out{<a href='https://www.tidyverse.org/lifecycle/#satble'><img src='figures/lifecycle-stable.svg' alt='Stable lifecycle'></a>}}{\strong{Stable}}
 
 This function searches for the most similar observation (closest neighbor) of
-each observation in a given data set based on a dissimilarity (e.g. distance
+each observation in a given dataset based on a dissimilarity (e.g. distance
 matrix). The observations are compared against their corresponding closest
 observations in terms of their side information provided. The root mean
 square of differences and the correlation coefficient are used for continuous
@@ -79,7 +79,7 @@ observations). While \mjeqn{p_o}{p_o} is the relative agreement
 
 This functions accepts vectors to be passed to argument \code{d}, in this
 case, the vector must represent the lower triangle of a dissimilarity matrix
-(e.g. as returned by the [stats::dist()] function of \code{stats}).
+(e.g. as returned by the \code{\link[stats:dist]{stats::dist()}} function of \code{stats}).
 }
 \examples{
 \donttest{
