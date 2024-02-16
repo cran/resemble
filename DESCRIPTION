@@ -1,8 +1,8 @@
 Package: resemble
 Type: Package
 Title: Memory-Based Learning in Spectral Chemometrics
-Version: 2.2.2
-Date: 2023-04-19
+Version: 2.2.3
+Date: 2024-02-16
 Author: Leonardo Ramirez-Lopez [aut, cre], 
     Antoine Stevens [aut, ctb],
     Claudio Orellano [ctb],
@@ -30,8 +30,8 @@ RdMacros: mathjaxr
 VignetteBuilder: knitr
 NeedsCompilation: yes
 Repository: CRAN
-RoxygenNote: 7.2.1
+RoxygenNote: 7.3.1
 Encoding: UTF-8
-Config/VersionName: Sky
-Packaged: 2023-04-20 19:52:07 UTC; NIR_Workstation
-Date/Publication: 2023-04-20 21:30:02 UTC
+Config/VersionName: embryo
+Packaged: 2024-02-16 14:43:13 UTC; leo
+Date/Publication: 2024-02-16 15:10:02 UTC
