@@ -1,7 +1,7 @@
-7515ebefc707d7693e63c7bad52db10a *DESCRIPTION
+9c8497ea2c71a86f0d444686eb06bdd3 *DESCRIPTION
 714c7e9a160480502af169d9fb9f7db6 *LICENSE
 25bb2d62613db2abc237dca214761434 *NAMESPACE
-8f480f7b22efb10e9274e0af66401db7 *NEWS.md
+e159a21362399af2ecc4b735a685700f *NEWS.md
 7ff4a8cbc81988f8ec98f3bb19f3d81b *R/AAA.R
 e77c2da5ac02220844d43cc8718077c6 *R/RcppExports.R
 202f2bb9576b927d21f8d9f5cae820d6 *R/cor_diss.R
@@ -11,7 +11,7 @@ b33bbe0551a4876786f5cb3e1d659134 *R/get_predictions.R
 3d663c1170e84ba36d62084d288eae41 *R/local_fit.R
 6467404c8b6bce04980b2262bb9b0d05 *R/local_helpers.R
 6a9e77fe7cc816e04020265e2c04fde9 *R/mbl.R
-e1090c55954c37afbfcdda956476a589 *R/mbl_control.R
+ab364e110cb2ba7047bfef9dd223088f *R/mbl_control.R
 5284335824d21210d07a50d7e045a802 *R/ortho_diss.R
 266e077e8f15728da00dc0f43acfc661 *R/ortho_diss_helpers.R
 3cd540a543f532480cdb34b41b63fb14 *R/ortho_projection.R
@@ -29,15 +29,14 @@ ae6f6378809363b6b996f6ff6cfb18a4 *R/sample_stratified.R
 fabaadf3ecd91f8c862dcef19e9db9ef *R/search_neighbors_helpers.R
 1466fda61938eb8ba7f0185efe7895d6 *R/sid.R
 b4b54f206fc4e6ecd66cbd779d12950d *R/sim_eval.R
-c15188cf64e0a77a1bd0fe4a2ad46903 *README.md
-682703715d43ae4f06199493933c4aef *build/partial.rdb
-251facc09c275e18629e754994cba1e9 *build/resemble.pdf
-c8167d576f74024d17eed8177d584b87 *build/vignette.rds
+bc4aa17ad651366232145e6d49a3bd64 *README.md
+579e62abdd8b9a858c4902b3ae6bd28e *build/stage23.rdb
+e2fc326267a2d1e2047023fcbede225c *build/vignette.rds
 ad7190ad7dd68f4fafa3a1305939a22e *inst/CITATION
 18940af96b92704490cf0e6e3c9373a9 *inst/changes.md
-84a10d833cd2ca9e37cc5f7af9d813c7 *inst/doc/resemble.R
+fdd2ded2351a23a925d38b43b40dede7 *inst/doc/resemble.R
 8d92986e79eb471f94ce0bc82e3205fa *inst/doc/resemble.Rmd
-97c2c9496aaef95af77501ab659022ca *inst/doc/resemble.html
+fca77ee2c26c987ca10962800cbd60d9 *inst/doc/resemble.html
 ad695214753f201d72b2d8f08229f211 *man/check_pc_arguments.Rd
 5fa552bfe648398ee6bebd14a352003e *man/cor_diss.Rd
 1c1c504dffd88bfa08fdfae0064a600b *man/diss_to_neighbors.Rd
@@ -83,7 +82,7 @@ bcf7b8e579a5e56083dd3f1113c8f59e *man/ith_subsets_ortho_diss.Rd
 f0def6391392d48357d0b9d50c8e9c85 *man/local_fit.Rd
 a35e84ddd133e5f69e3f01c2d3e8f1ce *man/local_ortho_diss.Rd
 0a1e7ca53946fcf7f77cc0ecaaac1f58 *man/mbl.Rd
-509f429efe68f819f1affb5bd7da9ce8 *man/mbl_control.Rd
+48fc1820b68094ac8142be7080b48e27 *man/mbl_control.Rd
 1896b9996d1a14c5b96822b557e69f27 *man/moving_cor_diss.Rd
 2e4f3d00182f67159266086e6b8f7d83 *man/opls.Rd
 40a298e5213941717d48a306a7dc3d9c *man/opls_cv_cpp.Rd
@@ -108,7 +107,7 @@ bae565ef8df303127ac00be7b561387f *man/print.mbl.Rd
 60f5619002b5d3b3f61eec7378610add *man/print.ortho_projection.Rd
 20f29c43a7221fda69a3482ed1379181 *man/project_opls.Rd
 387ca5adcc85d043439a900397047215 *man/reconstruction_error.Rd
-6721091fe846fba3829ec3480576f75e *man/resemble-package.Rd
+eb9b06781e2da26f799edc3da2ac7300 *man/resemble-package.Rd
 64041676a5489902be9dd95034b514d9 *man/sample_stratified.Rd
 cddaca5cd20c475e71f7facea6945da2 *man/search_neighbors.Rd
 6f640c5abb062b54c987d494d683840a *man/sid.Rd

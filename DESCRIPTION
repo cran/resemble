@@ -1,15 +1,30 @@
 Package: resemble
 Type: Package
 Title: Memory-Based Learning in Spectral Chemometrics
-Version: 2.2.3
-Date: 2024-02-16
-Author: Leonardo Ramirez-Lopez [aut, cre], 
-    Antoine Stevens [aut, ctb],
-    Claudio Orellano [ctb],
-    Raphael Viscarra Rossel [ctb],
-    Zefang Shen [ctb],
-    Craig Lobsey [ctb], 
-    Alex Wadoux [ctb]
+Version: 2.2.4
+Date: 2025-05-19
+Authors@R: c(
+  person(given = "Leonardo",
+         family = "Ramirez-Lopez",
+         role = c("aut", "cre"),
+         email = "ramirez.lopez.leo@gmail.com",
+         comment = c(ORCID = "0000-0002-5369-5120")),
+  person(given = "Antoine",
+         family = "Stevens",
+         role = c("aut", "ctb"),
+         comment = c(ORCID = "0000-0002-1588-7519")),
+  person(given = "Claudio",
+         family = "Orellano",
+         role = c("ctb")),
+  person(given = "Raphael",
+         family = "Viscarra Rossel",
+         role = c("ctb"),
+         comment = c(ORCID = "0000-0003-1540-4748")),
+  person(given = "Alex",
+         family = "Wadoux",
+         role = c("ctb"),
+         comment = c(ORCID = "0000-0001-7325-9716"))
+  )
 Maintainer: Leonardo Ramirez-Lopez <ramirez.lopez.leo@gmail.com>
 BugReports: https://github.com/l-ramirez-lopez/resemble/issues
 Description: 
@@ -30,8 +45,16 @@ RdMacros: mathjaxr
 VignetteBuilder: knitr
 NeedsCompilation: yes
 Repository: CRAN
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Encoding: UTF-8
-Config/VersionName: embryo
-Packaged: 2024-02-16 14:43:13 UTC; leo
-Date/Publication: 2024-02-16 15:10:02 UTC
+Config/VersionName: olbap
+Packaged: 2025-05-19 22:10:07 UTC; leo
+Author: Leonardo Ramirez-Lopez [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-5369-5120>),
+  Antoine Stevens [aut, ctb] (ORCID:
+    <https://orcid.org/0000-0002-1588-7519>),
+  Claudio Orellano [ctb],
+  Raphael Viscarra Rossel [ctb] (ORCID:
+    <https://orcid.org/0000-0003-1540-4748>),
+  Alex Wadoux [ctb] (ORCID: <https://orcid.org/0000-0001-7325-9716>)
+Date/Publication: 2025-05-19 22:30:02 UTC

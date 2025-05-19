@@ -59,17 +59,17 @@ matlines(x = new_wavs, y = t(NIRsoil$spc_p),
 par(old_par)
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  new_wavs <- as.matrix(as.numeric(colnames(NIRsoil$spc_p)))
-#  
-#  matplot(x = wavs, y = t(NIRsoil$spc),
-#          xlab = "Wavelengths, nm",
-#          ylab = "Absorbance",
-#          type = "l", lty = 1, col = "#5177A133")
-#  
-#  matplot(x = new_wavs, y = t(NIRsoil$spc_p),
-#          xlab = "Wavelengths, nm",
-#          ylab = "1st derivative",
-#          type = "l", lty = 1, col = "#5177A133")
+# new_wavs <- as.matrix(as.numeric(colnames(NIRsoil$spc_p)))
+# 
+# matplot(x = wavs, y = t(NIRsoil$spc),
+#         xlab = "Wavelengths, nm",
+#         ylab = "Absorbance",
+#         type = "l", lty = 1, col = "#5177A133")
+# 
+# matplot(x = new_wavs, y = t(NIRsoil$spc_p),
+#         xlab = "Wavelengths, nm",
+#         ylab = "1st derivative",
+#         type = "l", lty = 1, col = "#5177A133")
 
 ## -----------------------------------------------------------------------------
 # training dataset
@@ -96,34 +96,34 @@ pca_nipals_tr <- ortho_projection(Xr = training$spc_p,
 pca_nipals_tr
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # Partial Least Squares decomposition using
-#  # Total carbon as side information
-#  # (this might take some seconds)
-#  pls_tr <- ortho_projection(Xr = training$spc_p,
-#                             Yr = training$Ciso,
-#                             method = "pls")
-#  pls_tr
+# # Partial Least Squares decomposition using
+# # Total carbon as side information
+# # (this might take some seconds)
+# pls_tr <- ortho_projection(Xr = training$spc_p,
+#                            Yr = training$Ciso,
+#                            method = "pls")
+# pls_tr
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # This retains components that alone explain at least 5% of the original
-#  # variation in training$spc_p
-#  var_sel <-  list(method = "var", value = 0.05)
-#  pca_tr_minvar5 <- ortho_projection(Xr = training$spc_p,
+# # This retains components that alone explain at least 5% of the original
+# # variation in training$spc_p
+# var_sel <-  list(method = "var", value = 0.05)
+# pca_tr_minvar5 <- ortho_projection(Xr = training$spc_p,
+#                                    method = "pca",
+#                                    pc_selection = var_sel)
+# 
+# pca_tr_minvar5
+
+## ----results = 'hide', eval = FALSE-------------------------------------------
+# # This retains components that together explain at least 90% of the original
+# # variation in training$spc_p
+# cumvar_sel <-  list(method = "cumvar", value = 0.90)
+# 
+# pca_tr_cumvar90 <- ortho_projection(Xr = training$spc_p,
 #                                     method = "pca",
-#                                     pc_selection = var_sel)
-#  
-#  pca_tr_minvar5
-
-## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # This retains components that together explain at least 90% of the original
-#  # variation in training$spc_p
-#  cumvar_sel <-  list(method = "cumvar", value = 0.90)
-#  
-#  pca_tr_cumvar90 <- ortho_projection(Xr = training$spc_p,
-#                                      method = "pca",
-#                                      pc_selection = cumvar_sel)
-#  
-#  pca_tr_cumvar90
+#                                     pc_selection = cumvar_sel)
+# 
+# pca_tr_cumvar90
 
 ## ----results = 'hide'---------------------------------------------------------
 # This uses optimal component selection
@@ -196,71 +196,71 @@ t(pca_tr_opc$X_loadings)
 pca_projected <- predict(pca_tr_opc, newdata = testing$spc_p)
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  optimal_sel <-  list(method = "opc", value = 40)
-#  pca_tr_ts <- ortho_projection(Xr = training$spc_p,
-#                                Xu = testing$spc_p,
-#                                Yr = training$Ciso,
-#                                method = "pca",
-#                                pc_selection = optimal_sel,
-#                                scale = TRUE)
-#  plot(pca_tr_ts)
+# optimal_sel <-  list(method = "opc", value = 40)
+# pca_tr_ts <- ortho_projection(Xr = training$spc_p,
+#                               Xu = testing$spc_p,
+#                               Yr = training$Ciso,
+#                               method = "pca",
+#                               pc_selection = optimal_sel,
+#                               scale = TRUE)
+# plot(pca_tr_ts)
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  optimal_sel <-  list(method = "opc", value = 40)
-#  pls_tr_ts <- ortho_projection(Xr = training$spc_p,
-#                                Xu = testing$spc_p,
-#                                Yr = training$Ciso,
+# optimal_sel <-  list(method = "opc", value = 40)
+# pls_tr_ts <- ortho_projection(Xr = training$spc_p,
+#                               Xu = testing$spc_p,
+#                               Yr = training$Ciso,
+#                               method = "pls",
+#                               pc_selection = optimal_sel,
+#                               scale = TRUE)
+# 
+# # the same PLS projection model can be obtained with:
+# pls_tr_ts2 <- ortho_projection(Xr = training$spc_p[!is.na(training$Ciso),],
+#                                Yr = training$Ciso[!is.na(training$Ciso)],
 #                                method = "pls",
 #                                pc_selection = optimal_sel,
 #                                scale = TRUE)
-#  
-#  # the same PLS projection model can be obtained with:
-#  pls_tr_ts2 <- ortho_projection(Xr = training$spc_p[!is.na(training$Ciso),],
-#                                 Yr = training$Ciso[!is.na(training$Ciso)],
-#                                 method = "pls",
-#                                 pc_selection = optimal_sel,
-#                                 scale = TRUE)
-#  
-#  identical(pls_tr_ts$projection_mat, pls_tr_ts2$projection_mat)
+# 
+# identical(pls_tr_ts$projection_mat, pls_tr_ts2$projection_mat)
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  optimal_sel <-  list(method = "opc", value = 40)
-#  pls_multi_yr <- ortho_projection(Xr = training$spc_p,
-#                                   Xu = testing$spc_p,
-#                                   Yr = training[, c("Ciso", "Nt", "CEC")],
-#                                   method = "pls",
-#                                   pc_selection = optimal_sel,
-#                                   scale = TRUE)
-#  plot(pls_multi_yr)
+# optimal_sel <-  list(method = "opc", value = 40)
+# pls_multi_yr <- ortho_projection(Xr = training$spc_p,
+#                                  Xu = testing$spc_p,
+#                                  Yr = training[, c("Ciso", "Nt", "CEC")],
+#                                  method = "pls",
+#                                  pc_selection = optimal_sel,
+#                                  scale = TRUE)
+# plot(pls_multi_yr)
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  pls_multi_yr$opc_evaluation
+# pls_multi_yr$opc_evaluation
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # for PC dissimilarity using the default settings
-#  pcd <- dissimilarity(Xr = training$spc_p,
-#                       diss_method = "pca")
-#  dim(pcd$dissimilarity)
-#  
-#  # for PC dissimilarity using the optimized component selection method
-#  pcd2 <- dissimilarity(Xr = training$spc_p,
-#                        diss_method = "pca.nipals",
-#                        Yr = training$Ciso,
-#                        pc_selection = list("opc", 20),
-#                        return_projection = TRUE)
-#  dim(pcd2$dissimilarity)
-#  pcd2$dissimilarity
-#  pcd2$projection # the projection used to compute the dissimilarity matrix
-#  
-#  # for PLS dissimilarity
-#  plsd <- dissimilarity(Xr = training$spc_p,
-#                        diss_method = "pls",
-#                        Yr = training$Ciso,
-#                        pc_selection = list("opc", 20),
-#                        return_projection = TRUE)
-#  dim(plsd$dissimilarity)
-#  plsd$dissimilarity
-#  plsd$projection # the projection used to compute the dissimilarity matrix
+# # for PC dissimilarity using the default settings
+# pcd <- dissimilarity(Xr = training$spc_p,
+#                      diss_method = "pca")
+# dim(pcd$dissimilarity)
+# 
+# # for PC dissimilarity using the optimized component selection method
+# pcd2 <- dissimilarity(Xr = training$spc_p,
+#                       diss_method = "pca.nipals",
+#                       Yr = training$Ciso,
+#                       pc_selection = list("opc", 20),
+#                       return_projection = TRUE)
+# dim(pcd2$dissimilarity)
+# pcd2$dissimilarity
+# pcd2$projection # the projection used to compute the dissimilarity matrix
+# 
+# # for PLS dissimilarity
+# plsd <- dissimilarity(Xr = training$spc_p,
+#                       diss_method = "pls",
+#                       Yr = training$Ciso,
+#                       pc_selection = list("opc", 20),
+#                       return_projection = TRUE)
+# dim(plsd$dissimilarity)
+# plsd$dissimilarity
+# plsd$projection # the projection used to compute the dissimilarity matrix
 
 ## ----results = 'hide', eval = TRUE--------------------------------------------
 # For PC dissimilarity using the optimized component selection method
@@ -309,9 +309,9 @@ local_plsd_tr_ts$dissimilarity[1:10, 1:2]
 
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  cd_tr <- dissimilarity(Xr = training$spc_p, diss_method = "cor")
-#  dim(cd_tr$dissimilarity)
-#  cd_tr$dissimilarity
+# cd_tr <- dissimilarity(Xr = training$spc_p, diss_method = "cor")
+# dim(cd_tr$dissimilarity)
+# cd_tr$dissimilarity
 
 ## ----results = 'hide', eval = TRUE--------------------------------------------
 cd_tr_ts <- dissimilarity(Xr = training$spc_p,
@@ -321,58 +321,58 @@ dim(cd_tr_ts$dissimilarity)
 cd_tr_ts$dissimilarity
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # a moving window correlation dissimilarity between training and testing
-#  # using a window size of 19 spectral data points (equivalent to 95 nm)
-#  cd_mw <- dissimilarity(Xr = training$spc_p,
-#                         Xu = testing$spc_p,
-#                         diss_method = "cor",
-#                         ws = 19)
-#  cd_mw$dissimilarity
+# # a moving window correlation dissimilarity between training and testing
+# # using a window size of 19 spectral data points (equivalent to 95 nm)
+# cd_mw <- dissimilarity(Xr = training$spc_p,
+#                        Xu = testing$spc_p,
+#                        diss_method = "cor",
+#                        ws = 19)
+# cd_mw$dissimilarity
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # compute the dissimilarity between all the training observations
-#  ed <- dissimilarity(Xr = training$spc_p, diss_method = "euclid")
-#  ed$dissimilarity
+# # compute the dissimilarity between all the training observations
+# ed <- dissimilarity(Xr = training$spc_p, diss_method = "euclid")
+# ed$dissimilarity
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # compute the dissimilarity between all the training observations
-#  pre_time_resemble <- proc.time()
-#  ed_resemble <- dissimilarity(Xr = training$spc_p, diss_method = "euclid")
-#  post_time_resemble <- proc.time()
-#  post_time_resemble - pre_time_resemble
-#  
-#  pre_time_stats <- proc.time()
-#  ed_stats <- dist(training$spc_p, method = "euclid")
-#  post_time_stats <- proc.time()
-#  post_time_stats - pre_time_stats
-#  
-#  # scale the results of dist() based on the number of input columns
-#  ed_stats_tr <- sqrt((as.matrix(ed_stats)^2)/ncol(training$spc_p))
-#  ed_stats_tr[1:2, 1:3]
-#  
-#  # compare resemble and R stats results of Euclidean distances
-#  ed_resemble$dissimilarity[1:2, 1:3]
+# # compute the dissimilarity between all the training observations
+# pre_time_resemble <- proc.time()
+# ed_resemble <- dissimilarity(Xr = training$spc_p, diss_method = "euclid")
+# post_time_resemble <- proc.time()
+# post_time_resemble - pre_time_resemble
+# 
+# pre_time_stats <- proc.time()
+# ed_stats <- dist(training$spc_p, method = "euclid")
+# post_time_stats <- proc.time()
+# post_time_stats - pre_time_stats
+# 
+# # scale the results of dist() based on the number of input columns
+# ed_stats_tr <- sqrt((as.matrix(ed_stats)^2)/ncol(training$spc_p))
+# ed_stats_tr[1:2, 1:3]
+# 
+# # compare resemble and R stats results of Euclidean distances
+# ed_resemble$dissimilarity[1:2, 1:3]
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # compute the dissimilarity between the training and testing observations
-#  ed_tr_ts <- dissimilarity(Xr = training$spc_p,
+# # compute the dissimilarity between the training and testing observations
+# ed_tr_ts <- dissimilarity(Xr = training$spc_p,
+#                           Xu = testing$spc_p,
+#                           diss_method = "euclid")
+
+## ----results = 'hide', eval = FALSE-------------------------------------------
+# # compute the dissimilarity between the training and testing observations
+# cosine_tr_ts <- dissimilarity(Xr = training$spc_p,
+#                               Xu = testing$spc_p,
+#                               diss_method = "cosine")
+# dim(cosine_tr_ts$dissimilarity)
+# cosine_tr_ts$dissimilarity
+
+## ----results = 'hide', eval = FALSE-------------------------------------------
+# sid_tr_ts <- dissimilarity(Xr = training$spc_p,
 #                            Xu = testing$spc_p,
-#                            diss_method = "euclid")
-
-## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # compute the dissimilarity between the training and testing observations
-#  cosine_tr_ts <- dissimilarity(Xr = training$spc_p,
-#                                Xu = testing$spc_p,
-#                                diss_method = "cosine")
-#  dim(cosine_tr_ts$dissimilarity)
-#  cosine_tr_ts$dissimilarity
-
-## ----results = 'hide', eval = FALSE-------------------------------------------
-#  sid_tr_ts <- dissimilarity(Xr = training$spc_p,
-#                             Xu = testing$spc_p,
-#                             diss_method = "sid")
-#  dim(sid_tr_ts$dissimilarity)
-#  sid_tr_ts$dissimilarity
+#                            diss_method = "sid")
+# dim(sid_tr_ts$dissimilarity)
+# sid_tr_ts$dissimilarity
 
 ## ----results = 'hide', eval = TRUE--------------------------------------------
 # PC dissimilarity with default settings (variance-based 
@@ -460,16 +460,16 @@ comparisons <- lapply(names(ev),
 comparisons
 
 ## ----eval = FALSE, echo = TRUE------------------------------------------------
-#  comparisons <- lapply(names(ev),
-#                        FUN = function(x, label) {
-#                          irmsd <- x[[label]]$eval[1]
-#                          ir <- x[[label]]$eval[2]
-#                          data.frame(Measure = label,
-#                                     RMSD = irmsd,
-#                                     r =  ir)
-#                        },
-#                        x = ev)
-#  comparisons
+# comparisons <- lapply(names(ev),
+#                       FUN = function(x, label) {
+#                         irmsd <- x[[label]]$eval[1]
+#                         ir <- x[[label]]$eval[2]
+#                         data.frame(Measure = label,
+#                                    RMSD = irmsd,
+#                                    r =  ir)
+#                       },
+#                       x = ev)
+# comparisons
 
 ## ----tcomparisons, eval = TRUE, echo = FALSE----------------------------------
 knitr::kable(do.call("rbind", comparisons), 
@@ -482,19 +482,19 @@ knitr::kable(do.call("rbind", comparisons),
              format = "simple", digits = 2, align = "l", padding = 2)
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  old_par <- par("mfrow")
-#  par(mfrow = c(3, 3))
-#  p <- sapply(names(ev),
-#              FUN = function(x, label, labs = c("Ciso (1-NN), %", "Ciso, %")) {
-#                xy <- x[[label]]$first_nn[,2:1]
-#                plot(xy, xlab = labs[1], ylab = labs[2], col = "red")
-#                title(label)
-#                grid()
-#                abline(0, 1)
-#  
-#              },
-#              x = ev)
-#  par(old_par)
+# old_par <- par("mfrow")
+# par(mfrow = c(3, 3))
+# p <- sapply(names(ev),
+#             FUN = function(x, label, labs = c("Ciso (1-NN), %", "Ciso, %")) {
+#               xy <- x[[label]]$first_nn[,2:1]
+#               plot(xy, xlab = labs[1], ylab = labs[2], col = "red")
+#               title(label)
+#               grid()
+#               abline(0, 1)
+# 
+#             },
+#             x = ev)
+# par(old_par)
 
 ## ----pcomparisons, fig.cap = paste(fig_cap), fig.cap.style = "Image Caption", fig.align = "center", fig.width = 8, fig.height = 8, echo = FALSE, fig.retina = 0.85----
 old_par <- par("mfrow", "mar")
@@ -550,59 +550,59 @@ knn_pc$neighbors_diss[1:2, 1, drop = FALSE]
 knn_pc$unique_neighbors
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # using PC dissimilarity with optimal selection of components
-#  knn_opc <- search_neighbors(Xr = training$spc_p,
-#                              Xu = testing$spc_p,
-#                              diss_method = "pca.nipals",
-#                              Yr = training$Ciso,
-#                              k = 50,
-#                              pc_selection = list("opc", 20),
-#                              scale = TRUE)
-#  
-#  # using PLS dissimilarity with optimal selection of components
-#  knn_pls <- search_neighbors(Xr = training$spc_p,
-#                              Xu = testing$spc_p,
-#                              diss_method = "pls",
-#                              Yr = training$Ciso,
-#                              k = 50,
-#                              pc_selection = list("opc", 20),
-#                              scale = TRUE)
-#  
-#  # using correlation dissimilarity
-#  knn_c <- search_neighbors(Xr = training$spc_p,
-#                            Xu = testing$spc_p,
-#                            diss_method = "cor",
-#                            k = 50, scale = TRUE)
-#  
-#  # using moving window correlation dissimilarity
-#  knn_mwc <- search_neighbors(Xr = training$spc_p,
-#                              Xu = testing$spc_p,
-#                              diss_method = "cor",
-#                              k = 50,
-#                              ws = 51, scale = TRUE)
+# # using PC dissimilarity with optimal selection of components
+# knn_opc <- search_neighbors(Xr = training$spc_p,
+#                             Xu = testing$spc_p,
+#                             diss_method = "pca.nipals",
+#                             Yr = training$Ciso,
+#                             k = 50,
+#                             pc_selection = list("opc", 20),
+#                             scale = TRUE)
+# 
+# # using PLS dissimilarity with optimal selection of components
+# knn_pls <- search_neighbors(Xr = training$spc_p,
+#                             Xu = testing$spc_p,
+#                             diss_method = "pls",
+#                             Yr = training$Ciso,
+#                             k = 50,
+#                             pc_selection = list("opc", 20),
+#                             scale = TRUE)
+# 
+# # using correlation dissimilarity
+# knn_c <- search_neighbors(Xr = training$spc_p,
+#                           Xu = testing$spc_p,
+#                           diss_method = "cor",
+#                           k = 50, scale = TRUE)
+# 
+# # using moving window correlation dissimilarity
+# knn_mwc <- search_neighbors(Xr = training$spc_p,
+#                             Xu = testing$spc_p,
+#                             diss_method = "cor",
+#                             k = 50,
+#                             ws = 51, scale = TRUE)
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # using localized PC dissimilarity with optimal selection of components
-#  knn_local_opc <- search_neighbors(Xr = training$spc_p,
-#                                    Xu = testing$spc_p,
-#                                    diss_method = "pca.nipals",
-#                                    Yr = training$Ciso,
-#                                    k = 50,
-#                                    pc_selection = list("opc", 20),
-#                                    scale = TRUE,
-#                                    .local = TRUE,
-#                                    pre_k = 250)
-#  
-#  # using localized PLS dissimilarity with optimal selection of components
-#  knn_local_opc <- search_neighbors(Xr = training$spc_p,
-#                                    Xu = testing$spc_p,
-#                                    diss_method = "pls",
-#                                    Yr = training$Ciso,
-#                                    k = 50,
-#                                    pc_selection = list("opc", 20),
-#                                    scale = TRUE,
-#                                    .local = TRUE,
-#                                    pre_k = 250)
+# # using localized PC dissimilarity with optimal selection of components
+# knn_local_opc <- search_neighbors(Xr = training$spc_p,
+#                                   Xu = testing$spc_p,
+#                                   diss_method = "pca.nipals",
+#                                   Yr = training$Ciso,
+#                                   k = 50,
+#                                   pc_selection = list("opc", 20),
+#                                   scale = TRUE,
+#                                   .local = TRUE,
+#                                   pre_k = 250)
+# 
+# # using localized PLS dissimilarity with optimal selection of components
+# knn_local_opc <- search_neighbors(Xr = training$spc_p,
+#                                   Xu = testing$spc_p,
+#                                   diss_method = "pls",
+#                                   Yr = training$Ciso,
+#                                   k = 50,
+#                                   pc_selection = list("opc", 20),
+#                                   scale = TRUE,
+#                                   .local = TRUE,
+#                                   pre_k = 250)
 
 ## ----results = 'hide', eval = TRUE--------------------------------------------
 # a dissimilarity threshold
@@ -645,21 +645,21 @@ hist(dnn_pc$k_diss_info$final_n_k,
      main = "", col = "#EFBF47CC")
 
 ## ----results = 'hide', eval = FALSE-------------------------------------------
-#  # the indices of the observations that we want to "invite" to every neighborhood
-#  forced_guests <- c(1, 5, 8, 9)
-#  
-#  # using PC dissimilarity with optimal selection of components
-#  knn_spiked <- search_neighbors(Xr = training$spc_p,
-#                                 Xu = testing$spc_p,
-#                                 diss_method = "pca.nipals",
-#                                 Yr = training$Ciso,
-#                                 k = 50,
-#                                 spike = forced_guests,
-#                                 pc_selection = list("opc", 20))
-#  
-#  # check the first 8 neighbors found in training for the
-#  # first 2 observations in testing
-#  knn_spiked$neighbors[1:8, 1:2]
+# # the indices of the observations that we want to "invite" to every neighborhood
+# forced_guests <- c(1, 5, 8, 9)
+# 
+# # using PC dissimilarity with optimal selection of components
+# knn_spiked <- search_neighbors(Xr = training$spc_p,
+#                                Xu = testing$spc_p,
+#                                diss_method = "pca.nipals",
+#                                Yr = training$Ciso,
+#                                k = 50,
+#                                spike = forced_guests,
+#                                pc_selection = list("opc", 20))
+# 
+# # check the first 8 neighbors found in training for the
+# # first 2 observations in testing
+# knn_spiked$neighbors[1:8, 1:2]
 
 ## ----mblgif, fig.cap =  "Example of the main steps in memory-based learning for predicting a response variable in five different observations based on set of p-dimensional space.", echo = FALSE, out.width = '65%', fig.align = 'center', fig.retina = 0.85----
 knitr::include_graphics("MBL.gif")
@@ -734,15 +734,15 @@ local_ciso$results
 ciso_hat <- as.matrix(get_predictions(local_ciso))[, bki]
 
 ## ----eval = F-----------------------------------------------------------------
-#  # Plot predicted vs reference
-#  plot(ciso_hat, testing$Ciso,
-#       xlim = c(0, 14),
-#       ylim = c(0, 14),
-#       xlab = "Predicted Total Carbon, %",
-#       ylab = "Total Carbon, %",
-#       main = "LOCAL using argument k")
-#  grid()
-#  abline(0, 1, col = "red")
+# # Plot predicted vs reference
+# plot(ciso_hat, testing$Ciso,
+#      xlim = c(0, 14),
+#      ylim = c(0, 14),
+#      xlab = "Predicted Total Carbon, %",
+#      ylab = "Total Carbon, %",
+#      main = "LOCAL using argument k")
+# grid()
+# abline(0, 1, col = "red")
 
 ## ----eval = TRUE--------------------------------------------------------------
 # prediction RMSE:
@@ -775,7 +775,7 @@ local_ciso_diss <- mbl(
 )
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  plot(local_ciso_diss)
+# plot(local_ciso_diss)
 
 ## ----results = 'hide', eval = TRUE, echo = FALSE------------------------------
 bestd <- which.min(local_ciso_diss$validation_results$nearest_neighbor_validation$rmse)
@@ -793,15 +793,15 @@ bd <- local_ciso_diss$validation_results$nearest_neighbor_validation$k[bdi]
 ciso_diss_hat <- as.matrix(get_predictions(local_ciso_diss))[, bdi]
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  # Plot predicted vs reference
-#  plot(ciso_diss_hat, testing$Ciso,
-#       xlim = c(0, 14),
-#       ylim = c(0, 14),
-#       xlab = "Predicted Total Carbon, %",
-#       ylab = "Total Carbon, %",
-#       main = "LOCAL using argument k_diss")
-#  grid()
-#  abline(0, 1, col = "red")
+# # Plot predicted vs reference
+# plot(ciso_diss_hat, testing$Ciso,
+#      xlim = c(0, 14),
+#      ylim = c(0, 14),
+#      xlab = "Predicted Total Carbon, %",
+#      ylab = "Total Carbon, %",
+#      main = "LOCAL using argument k_diss")
+# grid()
+# abline(0, 1, col = "red")
 
 ## ----addexamples, eval = TRUE, echo = FALSE-----------------------------------
 abbr <- c("`local_cec`",
@@ -935,24 +935,24 @@ cor(testing$CEC, preds, use = "complete.obs")^2
 colMeans((preds - testing$CEC)^2, na.rm = TRUE)^0.5
 
 ## ----eval = FALSE,  fig.show = 'hide'-----------------------------------------
-#  old_par <- par("mfrow", "mar")
-#  
-#  par(mfrow = c(2, 2))
-#  plot(testing$CEC, preds[, 2],
-#       xlab = "Predicted CEC, meq/100g",
-#       ylab = "CEC, meq/100g", main = colnames(preds)[2])
-#  abline(0, 1, col = "red")
-#  
-#  plot(testing$CEC, preds[, 3],
-#       xlab = "Predicted CEC, meq/100g",
-#       ylab = "CEC, meq/100g", main = colnames(preds)[3])
-#  abline(0, 1, col = "red")
-#  
-#  plot(testing$CEC, preds[, 4],
-#       xlab = "Predicted CEC, meq/100g",
-#       ylab = "CEC, meq/100g", main = colnames(preds)[4])
-#  abline(0, 1, col = "red")
-#  par(old_par)
+# old_par <- par("mfrow", "mar")
+# 
+# par(mfrow = c(2, 2))
+# plot(testing$CEC, preds[, 2],
+#      xlab = "Predicted CEC, meq/100g",
+#      ylab = "CEC, meq/100g", main = colnames(preds)[2])
+# abline(0, 1, col = "red")
+# 
+# plot(testing$CEC, preds[, 3],
+#      xlab = "Predicted CEC, meq/100g",
+#      ylab = "CEC, meq/100g", main = colnames(preds)[3])
+# abline(0, 1, col = "red")
+# 
+# plot(testing$CEC, preds[, 4],
+#      xlab = "Predicted CEC, meq/100g",
+#      ylab = "CEC, meq/100g", main = colnames(preds)[4])
+# abline(0, 1, col = "red")
+# par(old_par)
 
 ## ----mblcomparisons, fig.cap = "CEC prediction results for the different MBL configurations tested" , fig.cap.style = "Image Caption", fig.align = "center", fig.width = 8, fig.height = 8, echo = FALSE, fig.retina = 0.85----
 old_par <- par("mfrow", "mar")
@@ -999,55 +999,55 @@ p <- sapply(colnames(preds),
 par(old_par)
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  # use Yu argument to validate the predictions
-#  pc_pred_nt_yu <- mbl(
-#    Xr = training$spc_p[!is.na(training$Nt),],
-#    Yr = training$Nt[!is.na(training$Nt)],
-#    Xu = testing$spc_p,
-#    Yu = testing$Nt,
-#    k = seq(40, 100, by = 10),
-#    diss_usage = "none",
-#    control = mbl_control(validation_type = "NNv"),
-#    scale = TRUE
-#  )
-#  
-#  pc_pred_nt_yu
+# # use Yu argument to validate the predictions
+# pc_pred_nt_yu <- mbl(
+#   Xr = training$spc_p[!is.na(training$Nt),],
+#   Yr = training$Nt[!is.na(training$Nt)],
+#   Xu = testing$spc_p,
+#   Yu = testing$Nt,
+#   k = seq(40, 100, by = 10),
+#   diss_usage = "none",
+#   control = mbl_control(validation_type = "NNv"),
+#   scale = TRUE
+# )
+# 
+# pc_pred_nt_yu
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  # Running the mbl function using multiple cores
-#  
-#  # Execute with two cores, if available, ...
-#  n_cores <- 2
-#  
-#  # ... if not then go with 1 core
-#  if (parallel::detectCores() < 2) {
-#    n_cores <- 1
-#  }
-#  
-#  # Set the number of cores
-#  library(doParallel)
-#  clust <- makeCluster(n_cores)
-#  registerDoParallel(clust)
-#  
-#  # Alternatively:
-#  # library(doSNOW)
-#  # clust <- makeCluster(n_cores, type = "SOCK")
-#  # registerDoSNOW(clust)
-#  # getDoParWorkers()
-#  
-#  pc_pred_nt <- mbl(
-#    Xr = training$spc_p[!is.na(training$Nt),],
-#    Yr = training$Nt[!is.na(training$Nt)],
-#    Xu = testing$spc_p,
-#    k = seq(40, 100, by = 10),
-#    diss_usage = "none",
-#    control = mbl_control(validation_type = "NNv"),
-#    scale = TRUE
-#  )
-#  
-#  # go back to sequential processing
-#  registerDoSEQ()
-#  try(stopCluster(clust))
-#  
-#  pc_pred_nt
+# # Running the mbl function using multiple cores
+# 
+# # Execute with two cores, if available, ...
+# n_cores <- 2
+# 
+# # ... if not then go with 1 core
+# if (parallel::detectCores() < 2) {
+#   n_cores <- 1
+# }
+# 
+# # Set the number of cores
+# library(doParallel)
+# clust <- makeCluster(n_cores)
+# registerDoParallel(clust)
+# 
+# # Alternatively:
+# # library(doSNOW)
+# # clust <- makeCluster(n_cores, type = "SOCK")
+# # registerDoSNOW(clust)
+# # getDoParWorkers()
+# 
+# pc_pred_nt <- mbl(
+#   Xr = training$spc_p[!is.na(training$Nt),],
+#   Yr = training$Nt[!is.na(training$Nt)],
+#   Xu = testing$spc_p,
+#   k = seq(40, 100, by = 10),
+#   diss_usage = "none",
+#   control = mbl_control(validation_type = "NNv"),
+#   scale = TRUE
+# )
+# 
+# # go back to sequential processing
+# registerDoSEQ()
+# try(stopCluster(clust))
+# 
+# pc_pred_nt
 
