@@ -1,8 +1,8 @@
 Package: resemble
 Type: Package
 Title: Memory-Based Learning in Spectral Chemometrics
-Version: 2.2.4
-Date: 2025-05-19
+Version: 2.2.5
+Date: 2025-10-16
 Authors@R: c(
   person(given = "Leonardo",
          family = "Ramirez-Lopez",
@@ -47,8 +47,8 @@ NeedsCompilation: yes
 Repository: CRAN
 RoxygenNote: 7.3.2
 Encoding: UTF-8
-Config/VersionName: olbap
-Packaged: 2025-05-19 22:10:07 UTC; leo
+Config/VersionName: dstatements
+Packaged: 2025-10-17 18:47:43 UTC; leo
 Author: Leonardo Ramirez-Lopez [aut, cre] (ORCID:
     <https://orcid.org/0000-0002-5369-5120>),
   Antoine Stevens [aut, ctb] (ORCID:
@@ -57,4 +57,4 @@ Author: Leonardo Ramirez-Lopez [aut, cre] (ORCID:
   Raphael Viscarra Rossel [ctb] (ORCID:
     <https://orcid.org/0000-0003-1540-4748>),
   Alex Wadoux [ctb] (ORCID: <https://orcid.org/0000-0001-7325-9716>)
-Date/Publication: 2025-05-19 22:30:02 UTC
+Date/Publication: 2025-10-17 19:20:02 UTC
